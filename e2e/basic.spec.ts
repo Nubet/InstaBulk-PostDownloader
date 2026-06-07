@@ -1,20 +1,12 @@
-import { expect, isDevArtifact, name, test } from './fixtures'
-
-test('example test', async ({ page }, testInfo) => {
-  testInfo.skip(!isDevArtifact(), 'contentScript is in closed ShadowRoot mode')
-
-  await page.goto('https://example.com')
-
-  await page.locator(`#${name} button`).click()
-  await expect(page.locator(`#${name} h1`)).toHaveText('Vitesse WebExt')
-})
+import { expect, test } from './fixtures'
 
 test('popup page', async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/dist/popup/index.html`)
-  await expect(page.locator('button')).toHaveText('Open Options')
+  await expect(page.locator('h1')).toHaveText('Profile Downloader')
+  await expect(page.locator('button')).toHaveText('Start profile download')
 })
 
-test('options page', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/dist/options/index.html`)
-  await expect(page.locator('img')).toHaveAttribute('alt', 'extension icon')
+test('sidepanel page', async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/dist/sidepanel/index.html`)
+  await expect(page.locator('h1')).toHaveText('Profile Downloader Panel')
 })
