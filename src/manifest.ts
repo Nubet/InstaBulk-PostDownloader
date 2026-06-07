@@ -17,10 +17,6 @@ export async function getManifest() {
       default_icon: 'assets/icon-512.png',
       default_popup: 'dist/popup/index.html',
     },
-    options_ui: {
-      page: 'dist/options/index.html',
-      open_in_tab: true,
-    },
     background: isFirefox
       ? {
           scripts: ['dist/background/index.mjs'],
@@ -35,16 +31,17 @@ export async function getManifest() {
       128: 'assets/icon-512.png',
     },
     permissions: [
-      'tabs',
-      'storage',
       'activeTab',
-      'sidePanel',
+      'downloads',
+      'scripting',
+      'storage',
+      'tabs',
     ],
-    host_permissions: ['*://*/*'],
+    host_permissions: ['https://www.instagram.com/*'],
     content_scripts: [
       {
         matches: [
-          '<all_urls>',
+          'https://www.instagram.com/*',
         ],
         js: [
           'dist/contentScripts/index.global.js',
@@ -54,7 +51,7 @@ export async function getManifest() {
     web_accessible_resources: [
       {
         resources: ['dist/contentScripts/style.css'],
-        matches: ['<all_urls>'],
+        matches: ['https://www.instagram.com/*'],
       },
     ],
     content_security_policy: {
@@ -65,15 +62,14 @@ export async function getManifest() {
     },
   }
 
-  // add sidepanel
   if (isFirefox) {
     manifest.sidebar_action = {
       default_panel: 'dist/sidepanel/index.html',
     }
   }
   else {
-    // the sidebar_action does not work for chromium based
-    (manifest as any).side_panel = {
+    // Chromium exposes persistent extension panels through `side_panel`.
+    ;(manifest as Manifest.WebExtensionManifest & { side_panel?: { default_path: string } }).side_panel = {
       default_path: 'dist/sidepanel/index.html',
     }
   }
