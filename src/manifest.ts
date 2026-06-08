@@ -62,18 +62,6 @@ export async function getManifest() {
     },
   }
 
-  if (isFirefox) {
-    manifest.sidebar_action = {
-      default_panel: 'dist/sidepanel/index.html',
-    }
-  }
-  else {
-    // Chromium exposes persistent extension panels through `side_panel`.
-    ;(manifest as Manifest.WebExtensionManifest & { side_panel?: { default_path: string } }).side_panel = {
-      default_path: 'dist/sidepanel/index.html',
-    }
-  }
-
   // FIXME: not work in MV3
   if (isDev && false) {
     // for content script, as browsers will cache them for each reload,
