@@ -1,33 +1,43 @@
 <script setup lang="ts">
 import { sendMessage } from 'webext-bridge/popup'
+import { createIdleProgress } from '~/application/createIdleProgress'
 import { validateInstagramProfileUrl } from '~/application/validateInstagramProfileUrl'
+import { extensionMessage } from '~/shared/messages'
 
-const status = ref('Open a public Instagram profile and start the setup check.')
+const progress = ref(createIdleProgress('Open a public Instagram profile first.'))
 const isBusy = ref(false)
 
 async function startProfileDownload() {
   isBusy.value = true
-  status.value = 'Checking active tab...'
+  progress.value = {
+    ...progress.value,
+    phase: 'validating-tab',
+    message: 'Checking active tab.',
+  }
 
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
     const validation = validateInstagramProfileUrl(tab?.url)
 
     if (!tab?.id || !validation.valid) {
-      status.value = validation.reason
+      progress.value = createIdleProgress(validation.reason)
       return
     }
 
     const response = await sendMessage(
-      'start-profile-download',
-      { profileUrl: validation.url },
+      extensionMessage.startProfileDownload,
+      { profileUrl: validation.profileUrl },
       { context: 'content-script', tabId: tab.id },
     )
 
-    status.value = response.message
+    progress.value = response.progress
   }
   catch (error) {
-    status.value = error instanceof Error ? error.message : 'Could not start the content script.'
+    progress.value = {
+      ...createIdleProgress(),
+      phase: 'failed',
+      message: error instanceof Error ? error.message : 'Could not start the content script.',
+    }
   }
   finally {
     isBusy.value = false
@@ -48,11 +58,11 @@ async function startProfileDownload() {
     </p>
 
     <button class="btn mt-4 w-full" :disabled="isBusy" @click="startProfileDownload">
-      {{ isBusy ? 'Checking...' : 'Start profile download' }}
+      {{ isBusy ? 'Checking...' : 'Start download' }}
     </button>
 
     <p class="mt-3 rounded bg-slate-100 px-3 py-2 text-xs leading-5 text-slate-600">
-      {{ status }}
+      {{ progress.message }}
     </p>
   </main>
 </template>
