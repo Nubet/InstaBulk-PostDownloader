@@ -1,16 +1,29 @@
-import { defineConfig } from 'vite'
+import { type PluginOption, defineConfig } from 'vite'
 import { sharedConfig } from './vite.config.mjs'
 import { isDev, r } from './scripts/utils'
 import packageJson from './package.json'
 
-// bundling the content script using Vite
+function excludeUnoCssPlugins(plugins: PluginOption[] = []): PluginOption[] {
+  return plugins.flatMap((plugin) => {
+    if (Array.isArray(plugin))
+      return excludeUnoCssPlugins(plugin)
+
+    if (!plugin || typeof plugin === 'boolean' || plugin instanceof Promise)
+      return plugin ? [plugin] : []
+
+    if ('name' in plugin && plugin.name.startsWith('unocss'))
+      return []
+
+    return [plugin]
+  })
+}
+
 export default defineConfig({
   ...sharedConfig,
+  plugins: excludeUnoCssPlugins(sharedConfig.plugins as PluginOption[]),
   define: {
     '__DEV__': isDev,
     '__NAME__': JSON.stringify(packageJson.name),
-    // https://github.com/vitejs/vite/issues/9320
-    // https://github.com/vitejs/vite/issues/9186
     'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
   },
   build: {

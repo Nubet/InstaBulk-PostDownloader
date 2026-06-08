@@ -1,6 +1,6 @@
 # InstaBulk Profile Downloader
 
-Browser allows downloading public Instagram profile content.
+Browser extension for downloading public Instagram profile content.
 
 ## Development
 
