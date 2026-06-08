@@ -9,6 +9,7 @@ import { extensionMessage } from '~/shared/messages'
 const progress = ref(createIdleProgress('Checking active tab.'))
 const activeTabId = ref<number | null>(null)
 const isBusy = ref(false)
+let statusPollTimer: number | null = null
 
 const hasActiveSession = computed(() => {
   return !!progress.value.sessionId && isActiveScrapePhase(progress.value.phase)
@@ -28,7 +29,8 @@ const actionClass = computed(() => {
 })
 
 async function refreshPopupState() {
-  isBusy.value = true
+  if (!hasActiveSession.value)
+    isBusy.value = true
 
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
@@ -58,6 +60,23 @@ async function refreshPopupState() {
   }
   finally {
     isBusy.value = false
+  }
+}
+
+async function pollActiveSession() {
+  if (!activeTabId.value || !hasActiveSession.value)
+    return
+
+  try {
+    const response = await sendMessage(
+      extensionMessage.getScrapeStatus,
+      { tabId: activeTabId.value },
+      { context: 'content-script', tabId: activeTabId.value },
+    )
+
+    progress.value = normalizeProgress(response.progress, progress.value.profileName)
+  }
+  catch {
   }
 }
 
@@ -152,6 +171,15 @@ function normalizeProgress(currentProgress: ScrapeProgress, profileName: string 
 
 onMounted(async () => {
   await refreshPopupState()
+
+  statusPollTimer = window.setInterval(() => {
+    void pollActiveSession()
+  }, 2000)
+})
+
+onBeforeUnmount(() => {
+  if (statusPollTimer !== null)
+    window.clearInterval(statusPollTimer)
 })
 </script>
 
