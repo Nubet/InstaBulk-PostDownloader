@@ -5,7 +5,7 @@ describe('validateInstagramProfileUrl', () => {
   it('accepts Instagram profile URLs', () => {
     expect(validateInstagramProfileUrl('https://www.instagram.com/nubet/')).toEqual({
       valid: true,
-      url: 'https://www.instagram.com/nubet/',
+      profileUrl: 'https://www.instagram.com/nubet/',
       profileName: 'nubet',
     })
   })

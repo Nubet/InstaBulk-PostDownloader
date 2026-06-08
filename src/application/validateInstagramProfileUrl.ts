@@ -1,3 +1,5 @@
+import { parseInstagramProfile } from './parseInstagramProfile'
+
 const RESERVED_INSTAGRAM_PATHS = new Set([
   'accounts',
   'direct',
@@ -9,7 +11,7 @@ const RESERVED_INSTAGRAM_PATHS = new Set([
 ])
 
 export type InstagramProfileValidation =
-  | { valid: true, url: string, profileName: string }
+  | { valid: true, profileUrl: string, profileName: string }
   | { valid: false, reason: string }
 
 export function validateInstagramProfileUrl(value: string | undefined): InstagramProfileValidation {
@@ -34,9 +36,11 @@ export function validateInstagramProfileUrl(value: string | undefined): Instagra
   if (!profileName || segments.length !== 1 || RESERVED_INSTAGRAM_PATHS.has(profileName))
     return { valid: false, reason: 'Open an Instagram profile page, not a post, reel, story, or feed page.' }
 
+  const profile = parseInstagramProfile(url.toString())
+
   return {
     valid: true,
-    url: url.toString(),
-    profileName,
+    profileUrl: profile.url,
+    profileName: profile.name,
   }
 }

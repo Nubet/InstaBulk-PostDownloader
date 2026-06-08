@@ -1,31 +1,12 @@
-import type { InstagramProfile } from '~/domain/instagramProfile'
-
-export interface DownloadSession {
-  profileName: string
-  profileUrl: string
-  targetRoot: string
-}
+import { parseInstagramProfile } from './parseInstagramProfile'
+import type { DownloadSession } from '~/domain/download'
 
 export function createDownloadSession(profileUrl: string): DownloadSession {
   const profile = parseInstagramProfile(profileUrl)
 
   return {
-    profileName: profile.name,
-    profileUrl: profile.url,
-    targetRoot: sanitizePathSegment(profile.name),
+    id: crypto.randomUUID(),
+    profile,
+    startedAt: new Date().toISOString(),
   }
-}
-
-function parseInstagramProfile(profileUrl: string): InstagramProfile {
-  const url = new URL(profileUrl)
-  const [profileName] = url.pathname.split('/').filter(Boolean)
-
-  return {
-    name: profileName,
-    url: url.toString(),
-  }
-}
-
-function sanitizePathSegment(value: string) {
-  return value.replace(/[<>:"/\\|?*]+/g, '_')
 }
