@@ -1,12 +1,16 @@
 import { onMessage } from 'webext-bridge/content-script'
+import { createScrapeSummaryProgress } from '~/application/createScrapeSummaryProgress'
 import { createIdleProgress } from '~/application/createIdleProgress'
+import { extractProfilePostsFromDocument } from '~/application/extractProfilePostsFromDocument'
 import { startDownloadSession } from '~/application/startDownloadSession'
-import type { DownloadSession, ScrapeProgress } from '~/domain/download'
+import type { DownloadSession, ScrapeProgress, ScrapedPost } from '~/domain/download'
 import type { StartProfileDownloadRequest, StopProfileDownloadRequest } from '~/shared/messages'
 import { extensionMessage } from '~/shared/messages'
 
 let activeSession: DownloadSession | null = null
 let progress: ScrapeProgress = createIdleProgress('Open a public Instagram profile first.')
+let scrapedPosts: ScrapedPost[] = []
+let seenPostIds = new Set<string>()
 
 onMessage(extensionMessage.getScrapeStatus, () => {
   return { progress }
@@ -19,7 +23,19 @@ onMessage(extensionMessage.startProfileDownload, ({ data }) => {
   activeSession = response.session
   progress = response.progress
 
-  return response
+  if (!response.accepted || !activeSession)
+    return response
+
+  seenPostIds = new Set()
+  const extraction = extractProfilePostsFromDocument(document, activeSession.profile.name, seenPostIds)
+  seenPostIds = extraction.seenPostIds
+  scrapedPosts = extraction.posts
+  progress = createScrapeSummaryProgress(activeSession, scrapedPosts)
+
+  return {
+    ...response,
+    progress,
+  }
 })
 
 onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
@@ -39,6 +55,10 @@ onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
 
   if (accepted)
     activeSession = null
+  if (accepted) {
+    scrapedPosts = []
+    seenPostIds = new Set()
+  }
 
   return {
     accepted,
