@@ -1,6 +1,7 @@
 import { onMessage, sendMessage } from 'webext-bridge/content-script'
 import { buildDownloadBatch } from '~/application/buildDownloadBatch'
 import { createIdleProgress } from '~/application/createIdleProgress'
+import { createScrapeDebugEntry } from '~/application/createScrapeDebugEntry'
 import { extractProfilePostsFromDocument } from '~/application/extractProfilePostsFromDocument'
 import { getCompletedScrapeProgress } from '~/application/getCompletedScrapeProgress'
 import { getFailedScrapeProgress } from '~/application/getFailedScrapeProgress'
@@ -12,8 +13,8 @@ import { getStoppedScrapeProgress } from '~/application/getStoppedScrapeProgress
 import { hasReachedProfileEnd } from '~/application/hasReachedProfileEnd'
 import { shouldApplyBatchCooldown } from '~/application/shouldApplyBatchCooldown'
 import { startDownloadSession } from '~/application/startDownloadSession'
-import type { DownloadSession, ScrapeProgress, ScrapedPost } from '~/domain/download'
-import type { QueueDownloadBatchResponse, StartProfileDownloadRequest, StopProfileDownloadRequest } from '~/shared/messages'
+import type { DownloadSession, ScrapeDebugEntry, ScrapeProgress, ScrapedPost } from '~/domain/download'
+import type { GetScrapeStatusResponse, QueueDownloadBatchResponse, StartProfileDownloadRequest, StartProfileDownloadResponse, StopProfileDownloadRequest, StopProfileDownloadResponse } from '~/shared/messages'
 import { extensionMessage } from '~/shared/messages'
 
 const scrollDelayRange = { min: 2000, max: 5500 }
@@ -28,37 +29,60 @@ let seenPostIds = new Set<string>()
 let isStopRequested = false
 let lastCooldownPostCount = 0
 let activeRunId = 0
+let debugLog: ScrapeDebugEntry[] = []
 
 onMessage(extensionMessage.getScrapeStatus, () => {
-  return { progress }
+  return buildStatusResponse()
 })
 
-onMessage(extensionMessage.startProfileDownload, ({ data }) => {
+onMessage(extensionMessage.startProfileDownload, async ({ data }) => {
   const request = data as unknown as StartProfileDownloadRequest
   const response = startDownloadSession(activeSession, progress, request.profileUrl)
 
   activeSession = response.session
   progress = response.progress
 
-  if (!response.accepted || !activeSession)
-    return response
+  if (!response.accepted) {
+    addDebugLog('warn', 'session', 'Rejected start request because another session is already active.')
+    return {
+      ...response,
+      debugLog,
+    } satisfies StartProfileDownloadResponse
+  }
+
+  if (!activeSession) {
+    return {
+      ...response,
+      debugLog,
+    } satisfies StartProfileDownloadResponse
+  }
 
   activeRunId += 1
   const runId = activeRunId
   isStopRequested = false
   seenPostIds = new Set()
+  debugLog = []
   lastCooldownPostCount = 0
-  const extraction = extractProfilePostsFromDocument(document, activeSession.profile.name)
-  seenPostIds = extraction.seenPostIds
-  scrapedPosts = extraction.posts
-  progress = getScrapeLoopProgress(activeSession, scrapedPosts.length, 'scraping', `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`)
+  scrapedPosts = []
+
+  addDebugLog('info', 'session', `Started scrape session for @${activeSession.profile.name}.`, `url=${activeSession.profile.url}`)
+  const foundInitialPosts = await scanVisiblePosts(activeSession, 'Initial DOM scan before scroll.')
+  progress = getScrapeLoopProgress(
+    activeSession,
+    scrapedPosts.length,
+    'scraping',
+    foundInitialPosts
+      ? `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`
+      : 'Scanning the profile grid.',
+  )
 
   void runProfileScrape(activeSession, runId)
 
   return {
     ...response,
+    debugLog,
     progress,
-  }
+  } satisfies StartProfileDownloadResponse
 })
 
 onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
@@ -67,6 +91,13 @@ onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
 
   if (accepted)
     isStopRequested = true
+
+  addDebugLog(
+    accepted ? 'info' : 'warn',
+    'session',
+    accepted ? 'Stop requested for active session.' : 'Stop requested for a non-active session.',
+    accepted ? `sessionId=${request.sessionId}` : undefined,
+  )
 
   progress = accepted
     ? {
@@ -81,14 +112,17 @@ onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
 
   return {
     accepted,
+    debugLog,
     progress,
-  }
+  } satisfies StopProfileDownloadResponse
 })
 
 async function runProfileScrape(session: DownloadSession, runId: number) {
   let attemptsWithoutNewPosts = 0
 
   try {
+    await waitForInitialProfileContent(session, runId)
+
     while (isCurrentRun(session.id, runId)) {
       if (isStopRequested)
         break
@@ -100,23 +134,21 @@ async function runProfileScrape(session: DownloadSession, runId: number) {
       }
 
       const scrollDelay = getRandomDelay(scrollDelayRange.min, scrollDelayRange.max)
+      addDebugLog('info', 'session', 'Waiting before next scroll.', `delayMs=${scrollDelay}`)
       await wait(scrollDelay)
 
       if (!isCurrentRun(session.id, runId) || isStopRequested)
         break
 
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+      addDebugLog('info', 'session', 'Scrolled to the current bottom of the profile page.', `scrollHeight=${document.documentElement.scrollHeight}`)
       await wait(1200)
 
       if (!isCurrentRun(session.id, runId) || isStopRequested)
         break
 
-      const extraction = extractProfilePostsFromDocument(document, session.profile.name, seenPostIds)
-      seenPostIds = extraction.seenPostIds
-
-      if (extraction.posts.length > 0) {
+      if (await scanVisiblePosts(session, `Post-scroll scan ${attemptsWithoutNewPosts + 1}.`)) {
         attemptsWithoutNewPosts = 0
-        scrapedPosts = [...scrapedPosts, ...extraction.posts]
         progress = getScrapeLoopProgress(session, scrapedPosts.length, 'scraping', `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`)
       }
       else {
@@ -128,11 +160,13 @@ async function runProfileScrape(session: DownloadSession, runId: number) {
         lastCooldownPostCount = scrapedPosts.length
         const cooldownDelay = getRandomDelay(cooldownDelayRange.min, cooldownDelayRange.max)
         progress = getScrapeLoopProgress(session, scrapedPosts.length, 'cooldown', `Cooling down after ${scrapedPosts.length} posts.`)
+        addDebugLog('info', 'session', 'Applying cooldown after batch threshold.', `delayMs=${cooldownDelay}, posts=${scrapedPosts.length}`)
         await wait(cooldownDelay)
       }
     }
 
     if (isStopRequested) {
+      addDebugLog('info', 'session', 'Stopped session before save phase.')
       progress = getStoppedScrapeProgress(session, scrapedPosts.length)
       cleanupSession(session.id, runId)
       return
@@ -144,6 +178,7 @@ async function runProfileScrape(session: DownloadSession, runId: number) {
     cleanupSession(session.id, runId)
   }
   catch (error) {
+    addDebugLog('error', 'session', 'Scrape session failed.', error instanceof Error ? error.message : 'Unknown scrape error.')
     progress = getFailedScrapeProgress(session, scrapedPosts.length, error instanceof Error ? error.message : 'Profile scraping failed.')
     cleanupSession(session.id, runId)
   }
@@ -156,6 +191,7 @@ function wait(delayMs: number) {
 async function saveScrapedPosts(session: DownloadSession, runId: number) {
   const batch = buildDownloadBatch(session, scrapedPosts)
   progress = getSavingProgress(session, scrapedPosts.length, batch.items.length)
+  addDebugLog('info', 'downloads', 'Queued scraped posts for saving.', `posts=${scrapedPosts.length}, files=${batch.items.length}`)
   const payload = { batch } as unknown as never
 
   const response = await sendMessage(
@@ -167,6 +203,11 @@ async function saveScrapedPosts(session: DownloadSession, runId: number) {
   if (!isCurrentRun(session.id, runId))
     return
 
+  if (response.failure)
+    addDebugLog('warn', 'downloads', 'Download batch completed with a warning.', response.failure.message)
+  else
+    addDebugLog('info', 'downloads', 'Download batch finished successfully.', `downloadedFiles=${response.downloadedFileCount}`)
+
   progress = getSavedProgress(
     session,
     scrapedPosts.length,
@@ -177,6 +218,53 @@ async function saveScrapedPosts(session: DownloadSession, runId: number) {
 
   if (!response.failure && batch.items.length === 0)
     progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+}
+
+async function waitForInitialProfileContent(session: DownloadSession, runId: number) {
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    if (!isCurrentRun(session.id, runId) || isStopRequested)
+      return
+
+    const foundNewPosts = await scanVisiblePosts(session, `Hydration scan ${attempt}/5 before scrolling.`)
+
+    if (foundNewPosts || scrapedPosts.length > 0)
+      return
+
+    progress = getScrapeLoopProgress(session, scrapedPosts.length, 'scraping', 'Waiting for profile posts to render.')
+    await wait(800)
+  }
+
+  addDebugLog('warn', 'extractor', 'Initial hydration scans did not find any visible profile posts.')
+}
+
+async function scanVisiblePosts(session: DownloadSession, reason: string) {
+  const extraction = extractProfilePostsFromDocument(document, session.profile.name, seenPostIds)
+  seenPostIds = extraction.seenPostIds
+
+  addDebugLog(
+    extraction.posts.length > 0 ? 'info' : 'warn',
+    'extractor',
+    reason,
+    [
+      `selector=${extraction.diagnostics.selector}`,
+      `anchors=${extraction.diagnostics.anchorCount}`,
+      `duplicates=${extraction.diagnostics.duplicatePostCount}`,
+      `missingMedia=${extraction.diagnostics.missingMediaCount}`,
+      `missingSource=${extraction.diagnostics.missingSourceCount}`,
+      `newPosts=${extraction.diagnostics.addedPostCount}`,
+      `anchorSamples=${extraction.diagnostics.sampleAnchorPaths.join(', ') || 'none'}`,
+      `samples=${extraction.diagnostics.samplePostPaths.join(', ') || 'none'}`,
+    ].join(' | '),
+  )
+
+  const newPosts = extraction.posts
+
+  if (newPosts.length === 0)
+    return false
+
+  scrapedPosts = [...scrapedPosts, ...newPosts]
+  progress = getScrapeLoopProgress(session, scrapedPosts.length, 'scraping', `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`)
+  return true
 }
 
 function isCurrentRun(sessionId: string, runId: number) {
@@ -192,4 +280,15 @@ function cleanupSession(sessionId: string, runId: number) {
   seenPostIds = new Set()
   isStopRequested = false
   lastCooldownPostCount = 0
+}
+
+function addDebugLog(level: ScrapeDebugEntry['level'], scope: ScrapeDebugEntry['scope'], message: string, details?: string) {
+  debugLog = [...debugLog, createScrapeDebugEntry(level, scope, message, details)].slice(-120)
+}
+
+function buildStatusResponse(): GetScrapeStatusResponse {
+  return {
+    progress,
+    debugLog,
+  }
 }

@@ -17,6 +17,15 @@ export interface DownloadSession {
   startedAt: string
 }
 
+export interface ScrapeDebugEntry {
+  id: string
+  timestamp: string
+  level: 'info' | 'warn' | 'error'
+  scope: 'session' | 'extractor' | 'downloads'
+  message: string
+  details?: string
+}
+
 export interface DownloadBatch {
   sessionId: string
   profile: InstagramProfile

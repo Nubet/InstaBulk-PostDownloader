@@ -3,10 +3,11 @@ import { sendMessage } from 'webext-bridge/popup'
 import { createIdleProgress } from '~/application/createIdleProgress'
 import { isActiveScrapePhase } from '~/application/isActiveScrapePhase'
 import { validateInstagramProfileUrl } from '~/application/validateInstagramProfileUrl'
-import type { ScrapeProgress } from '~/domain/download'
+import type { ScrapeDebugEntry, ScrapeProgress } from '~/domain/download'
 import { extensionMessage } from '~/shared/messages'
 
 const progress = ref(createIdleProgress('Checking active tab.'))
+const debugLog = ref<ScrapeDebugEntry[]>([])
 const activeTabId = ref<number | null>(null)
 const isBusy = ref(false)
 let statusPollTimer: number | null = null
@@ -32,6 +33,10 @@ const hasProgressCounts = computed(() => {
   return progress.value.discoveredPostCount > 0 || progress.value.queuedFileCount > 0 || progress.value.downloadedFileCount > 0
 })
 
+const visibleDebugLog = computed(() => {
+  return [...debugLog.value].reverse().slice(0, 12)
+})
+
 async function refreshPopupState() {
   if (!hasActiveSession.value)
     isBusy.value = true
@@ -44,6 +49,7 @@ async function refreshPopupState() {
 
     if (!tab?.id || !validation.valid) {
       progress.value = createIdleProgress(validation.reason)
+      debugLog.value = []
       return
     }
 
@@ -53,7 +59,7 @@ async function refreshPopupState() {
       { context: 'content-script', tabId: tab.id },
     )
 
-    progress.value = normalizeProgress(response.progress, validation.profileName)
+    applyScrapeState(response.progress, response.debugLog, validation.profileName)
   }
   catch (error) {
     progress.value = {
@@ -61,6 +67,7 @@ async function refreshPopupState() {
       phase: 'failed',
       message: error instanceof Error ? error.message : 'Could not load the tab status.',
     }
+    debugLog.value = []
   }
   finally {
     isBusy.value = false
@@ -78,7 +85,7 @@ async function pollActiveSession() {
       { context: 'content-script', tabId: activeTabId.value },
     )
 
-    progress.value = normalizeProgress(response.progress, progress.value.profileName)
+    applyScrapeState(response.progress, response.debugLog, progress.value.profileName)
   }
   catch {
   }
@@ -87,6 +94,7 @@ async function pollActiveSession() {
 async function handleAction() {
   if (!activeTabId.value) {
     progress.value = createIdleProgress('Open a public Instagram profile first.')
+    debugLog.value = []
     return
   }
 
@@ -112,6 +120,7 @@ async function startProfileDownload(tabId: number) {
 
     if (!tab?.id || tab.id !== tabId || !validation.valid) {
       progress.value = createIdleProgress(validation.valid ? 'Open a public Instagram profile first.' : validation.reason)
+      debugLog.value = []
       return
     }
 
@@ -121,7 +130,7 @@ async function startProfileDownload(tabId: number) {
       { context: 'content-script', tabId },
     )
 
-    progress.value = normalizeProgress(response.progress, validation.profileName)
+    applyScrapeState(response.progress, response.debugLog, validation.profileName)
   }
   catch (error) {
     progress.value = {
@@ -129,6 +138,7 @@ async function startProfileDownload(tabId: number) {
       phase: 'failed',
       message: error instanceof Error ? error.message : 'Could not start the download session.',
     }
+    debugLog.value = []
   }
   finally {
     isBusy.value = false
@@ -148,7 +158,7 @@ async function stopProfileDownload(tabId: number, currentProgress: ScrapeProgres
       { context: 'content-script', tabId },
     )
 
-    progress.value = normalizeProgress(response.progress, currentProgress.profileName)
+    applyScrapeState(response.progress, response.debugLog, currentProgress.profileName)
   }
   catch (error) {
     progress.value = {
@@ -171,6 +181,11 @@ function normalizeProgress(currentProgress: ScrapeProgress, profileName: string 
     profileName,
     message: profileName ? `Ready to download @${profileName}.` : 'Ready to start.',
   }
+}
+
+function applyScrapeState(currentProgress: ScrapeProgress, currentDebugLog: ScrapeDebugEntry[], profileName: string | null) {
+  progress.value = normalizeProgress(currentProgress, profileName)
+  debugLog.value = currentDebugLog
 }
 
 onMounted(async () => {
@@ -221,6 +236,30 @@ onBeforeUnmount(() => {
         <p>saved</p>
       </div>
     </div>
+
+    <section class="mt-4">
+      <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        System log
+      </h2>
+
+      <div class="mt-2 max-h-56 overflow-y-auto rounded bg-slate-950 px-3 py-2 font-mono text-[11px] leading-4 text-slate-200">
+        <p v-if="visibleDebugLog.length === 0" class="text-slate-400">
+          No session logs yet.
+        </p>
+
+        <div v-for="entry in visibleDebugLog" :key="entry.id" class="border-b border-slate-800 py-2 last:border-b-0">
+          <p>
+            [{{ entry.level }}][{{ entry.scope }}] {{ entry.message }}
+          </p>
+          <p class="text-slate-400">
+            {{ new Date(entry.timestamp).toLocaleTimeString() }}
+          </p>
+          <p v-if="entry.details" class="mt-1 break-words text-slate-400">
+            {{ entry.details }}
+          </p>
+        </div>
+      </div>
+    </section>
 
     <button class="btn mt-4 w-full" :class="actionClass" :disabled="isBusy" @click="handleAction">
       {{ actionLabel }}

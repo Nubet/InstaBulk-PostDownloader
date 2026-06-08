@@ -1,20 +1,15 @@
-import type { DownloadBatch, DownloadSession, ScrapeFailure, ScrapeProgress } from '~/domain/download'
+import type { DownloadBatch, DownloadSession, ScrapeDebugEntry, ScrapeFailure, ScrapeProgress } from '~/domain/download'
 
 export const extensionMessage = {
   getScrapeStatus: 'scrape/get-status',
   startProfileDownload: 'scrape/start-profile-download',
   stopProfileDownload: 'scrape/stop-profile-download',
   queueDownloadBatch: 'downloads/queue-batch',
-  downloadBatchQueued: 'downloads/batch-queued',
-  scrapeFailed: 'scrape/failed',
 } as const
-
-export interface GetScrapeStatusRequest {
-  tabId: number
-}
 
 export interface GetScrapeStatusResponse {
   progress: ScrapeProgress
+  debugLog: ScrapeDebugEntry[]
 }
 
 export interface StartProfileDownloadRequest {
@@ -25,6 +20,7 @@ export interface StartProfileDownloadResponse {
   accepted: boolean
   session: DownloadSession | null
   progress: ScrapeProgress
+  debugLog: ScrapeDebugEntry[]
 }
 
 export interface StopProfileDownloadRequest {
@@ -34,6 +30,7 @@ export interface StopProfileDownloadRequest {
 export interface StopProfileDownloadResponse {
   accepted: boolean
   progress: ScrapeProgress
+  debugLog: ScrapeDebugEntry[]
 }
 
 export interface QueueDownloadBatchRequest {
