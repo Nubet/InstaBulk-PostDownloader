@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'vitest'
+import { getSavedProgress } from './getSavedProgress'
+import type { DownloadSession } from '~/domain/download'
+
+describe('getSavedProgress', () => {
+  it('creates completed progress with downloaded file count', () => {
+    const session: DownloadSession = {
+      id: '11111111-1111-1111-1111-111111111111',
+      profile: {
+        name: 'nubet',
+        url: 'https://www.instagram.com/nubet/',
+        targetRoot: 'nubet',
+      },
+      startedAt: '2026-06-08T10:00:00.000Z',
+    }
+
+    expect(getSavedProgress(session, 3, 6, 5)).toEqual({
+      sessionId: session.id,
+      profileName: 'nubet',
+      phase: 'completed',
+      discoveredPostCount: 3,
+      queuedFileCount: 6,
+      downloadedFileCount: 5,
+      message: 'Saved 5 of 6 files.',
+    })
+  })
+})

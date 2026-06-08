@@ -43,5 +43,6 @@ export interface QueueDownloadBatchRequest {
 export interface QueueDownloadBatchResponse {
   accepted: boolean
   queuedItemCount: number
+  downloadedFileCount: number
   failure: ScrapeFailure | null
 }

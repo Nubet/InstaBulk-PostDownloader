@@ -1,16 +1,19 @@
-import { onMessage } from 'webext-bridge/content-script'
+import { onMessage, sendMessage } from 'webext-bridge/content-script'
+import { buildDownloadBatch } from '~/application/buildDownloadBatch'
 import { createIdleProgress } from '~/application/createIdleProgress'
 import { extractProfilePostsFromDocument } from '~/application/extractProfilePostsFromDocument'
 import { getCompletedScrapeProgress } from '~/application/getCompletedScrapeProgress'
 import { getFailedScrapeProgress } from '~/application/getFailedScrapeProgress'
 import { getRandomDelay } from '~/application/getRandomDelay'
+import { getSavedProgress } from '~/application/getSavedProgress'
 import { getScrapeLoopProgress } from '~/application/getScrapeLoopProgress'
+import { getSavingProgress } from '~/application/getSavingProgress'
 import { getStoppedScrapeProgress } from '~/application/getStoppedScrapeProgress'
 import { hasReachedProfileEnd } from '~/application/hasReachedProfileEnd'
 import { shouldApplyBatchCooldown } from '~/application/shouldApplyBatchCooldown'
 import { startDownloadSession } from '~/application/startDownloadSession'
 import type { DownloadSession, ScrapeProgress, ScrapedPost } from '~/domain/download'
-import type { StartProfileDownloadRequest, StopProfileDownloadRequest } from '~/shared/messages'
+import type { QueueDownloadBatchResponse, StartProfileDownloadRequest, StopProfileDownloadRequest } from '~/shared/messages'
 import { extensionMessage } from '~/shared/messages'
 
 const scrollDelayRange = { min: 2000, max: 5500 }
@@ -95,7 +98,7 @@ async function runProfileScrape(session: DownloadSession) {
         break
 
       if (hasReachedProfileEnd(attemptsWithoutNewPosts, maxAttemptsWithoutNewPosts)) {
-        progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+        await saveScrapedPosts(session)
         activeSession = null
         return
       }
@@ -140,7 +143,7 @@ async function runProfileScrape(session: DownloadSession) {
     }
 
     if (activeSession?.id === session.id)
-      progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+      await saveScrapedPosts(session)
 
     activeSession = null
   }
@@ -152,4 +155,23 @@ async function runProfileScrape(session: DownloadSession) {
 
 function wait(delayMs: number) {
   return new Promise<void>(resolve => window.setTimeout(resolve, delayMs))
+}
+
+async function saveScrapedPosts(session: DownloadSession) {
+  const batch = buildDownloadBatch(session, scrapedPosts)
+  progress = getSavingProgress(session, scrapedPosts.length, batch.items.length)
+  const payload = { batch } as unknown as never
+
+  const response = await sendMessage(
+    extensionMessage.queueDownloadBatch,
+    payload,
+    { context: 'background' } as never,
+  ) as unknown as QueueDownloadBatchResponse
+
+  progress = response.failure
+    ? getFailedScrapeProgress(session, scrapedPosts.length, response.failure.message)
+    : getSavedProgress(session, scrapedPosts.length, response.queuedItemCount, response.downloadedFileCount)
+
+  if (!response.failure && batch.items.length === 0)
+    progress = getCompletedScrapeProgress(session, scrapedPosts.length)
 }

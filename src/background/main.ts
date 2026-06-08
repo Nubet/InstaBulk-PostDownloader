@@ -1,4 +1,5 @@
 import { onMessage } from 'webext-bridge/background'
+import { downloadBatch } from './downloadBatch'
 import type { QueueDownloadBatchRequest } from '~/shared/messages'
 import { extensionMessage } from '~/shared/messages'
 
@@ -8,12 +9,14 @@ if (import.meta.hot) {
   import('./contentScriptHMR')
 }
 
-onMessage(extensionMessage.queueDownloadBatch, ({ data }) => {
+onMessage(extensionMessage.queueDownloadBatch, async ({ data }) => {
   const request = data as unknown as QueueDownloadBatchRequest
+  const result = await downloadBatch(request.batch)
 
   return {
     accepted: true,
     queuedItemCount: request.batch.items.length,
-    failure: null,
+    downloadedFileCount: result.downloadedFileCount,
+    failure: result.failure,
   }
 })
