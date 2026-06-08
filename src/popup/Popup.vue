@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { sendMessage } from 'webext-bridge/popup'
 import { createIdleProgress } from '~/application/createIdleProgress'
+import { isActiveScrapePhase } from '~/application/isActiveScrapePhase'
 import { validateInstagramProfileUrl } from '~/application/validateInstagramProfileUrl'
-import type { ScrapePhase, ScrapeProgress } from '~/domain/download'
+import type { ScrapeProgress } from '~/domain/download'
 import { extensionMessage } from '~/shared/messages'
 
 const progress = ref(createIdleProgress('Checking active tab.'))
 const activeTabId = ref<number | null>(null)
 const isBusy = ref(false)
 
-const activePhases: ScrapePhase[] = ['starting', 'scraping', 'cooldown', 'saving']
-
 const hasActiveSession = computed(() => {
-  return !!progress.value.sessionId && activePhases.includes(progress.value.phase)
+  return !!progress.value.sessionId && isActiveScrapePhase(progress.value.phase)
 })
 
 const actionLabel = computed(() => {
@@ -54,7 +53,7 @@ async function refreshPopupState() {
     progress.value = {
       ...createIdleProgress(),
       phase: 'failed',
-      message: error instanceof Error ? error.message : 'Could not start the content script.',
+      message: error instanceof Error ? error.message : 'Could not load the tab status.',
     }
   }
   finally {
@@ -105,7 +104,7 @@ async function startProfileDownload(tabId: number) {
     progress.value = {
       ...createIdleProgress(),
       phase: 'failed',
-      message: error instanceof Error ? error.message : 'Could not start the content script.',
+      message: error instanceof Error ? error.message : 'Could not start the download session.',
     }
   }
   finally {

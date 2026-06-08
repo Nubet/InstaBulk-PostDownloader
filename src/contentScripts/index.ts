@@ -1,6 +1,6 @@
 import { onMessage } from 'webext-bridge/content-script'
-import { createDownloadSession } from '~/application/createDownloadSession'
 import { createIdleProgress } from '~/application/createIdleProgress'
+import { startDownloadSession } from '~/application/startDownloadSession'
 import type { DownloadSession, ScrapeProgress } from '~/domain/download'
 import type { StartProfileDownloadRequest, StopProfileDownloadRequest } from '~/shared/messages'
 import { extensionMessage } from '~/shared/messages'
@@ -14,23 +14,12 @@ onMessage(extensionMessage.getScrapeStatus, () => {
 
 onMessage(extensionMessage.startProfileDownload, ({ data }) => {
   const request = data as unknown as StartProfileDownloadRequest
+  const response = startDownloadSession(activeSession, progress, request.profileUrl)
 
-  activeSession = createDownloadSession(request.profileUrl)
-  progress = {
-    sessionId: activeSession.id,
-    profileName: activeSession.profile.name,
-    phase: 'starting',
-    discoveredPostCount: 0,
-    queuedFileCount: 0,
-    downloadedFileCount: 0,
-    message: `Session ready for ${activeSession.profile.name}.`,
-  }
+  activeSession = response.session
+  progress = response.progress
 
-  return {
-    accepted: true,
-    session: activeSession,
-    progress,
-  }
+  return response
 })
 
 onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
