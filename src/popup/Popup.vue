@@ -28,6 +28,10 @@ const actionClass = computed(() => {
     : 'bg-pink-600 hover:bg-pink-700'
 })
 
+const hasProgressCounts = computed(() => {
+  return progress.value.discoveredPostCount > 0 || progress.value.queuedFileCount > 0 || progress.value.downloadedFileCount > 0
+})
+
 async function refreshPopupState() {
   if (!hasActiveSession.value)
     isBusy.value = true
@@ -196,6 +200,27 @@ onBeforeUnmount(() => {
     <p class="mt-2 rounded bg-slate-100 px-3 py-2 text-sm leading-5 text-slate-700">
       {{ progress.message }}
     </p>
+
+    <div v-if="hasProgressCounts" class="mt-3 grid grid-cols-3 gap-2 text-center text-xs text-slate-600">
+      <div class="rounded bg-slate-100 px-2 py-2">
+        <p class="font-semibold text-slate-900">
+          {{ progress.discoveredPostCount }}
+        </p>
+        <p>posts</p>
+      </div>
+      <div class="rounded bg-slate-100 px-2 py-2">
+        <p class="font-semibold text-slate-900">
+          {{ progress.queuedFileCount }}
+        </p>
+        <p>queued</p>
+      </div>
+      <div class="rounded bg-slate-100 px-2 py-2">
+        <p class="font-semibold text-slate-900">
+          {{ progress.downloadedFileCount }}
+        </p>
+        <p>saved</p>
+      </div>
+    </div>
 
     <button class="btn mt-4 w-full" :class="actionClass" :disabled="isBusy" @click="handleAction">
       {{ actionLabel }}

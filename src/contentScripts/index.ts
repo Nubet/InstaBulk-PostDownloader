@@ -27,6 +27,7 @@ let scrapedPosts: ScrapedPost[] = []
 let seenPostIds = new Set<string>()
 let isStopRequested = false
 let lastCooldownPostCount = 0
+let activeRunId = 0
 
 onMessage(extensionMessage.getScrapeStatus, () => {
   return { progress }
@@ -42,6 +43,8 @@ onMessage(extensionMessage.startProfileDownload, ({ data }) => {
   if (!response.accepted || !activeSession)
     return response
 
+  activeRunId += 1
+  const runId = activeRunId
   isStopRequested = false
   seenPostIds = new Set()
   lastCooldownPostCount = 0
@@ -50,7 +53,7 @@ onMessage(extensionMessage.startProfileDownload, ({ data }) => {
   scrapedPosts = extraction.posts
   progress = getScrapeLoopProgress(activeSession, scrapedPosts.length, 'scraping', `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`)
 
-  void runProfileScrape(activeSession)
+  void runProfileScrape(activeSession, runId)
 
   return {
     ...response,
@@ -76,43 +79,36 @@ onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
         message: 'No matching session to stop.',
       }
 
-  if (accepted)
-    activeSession = null
-  if (accepted) {
-    scrapedPosts = []
-    seenPostIds = new Set()
-  }
-
   return {
     accepted,
     progress,
   }
 })
 
-async function runProfileScrape(session: DownloadSession) {
+async function runProfileScrape(session: DownloadSession, runId: number) {
   let attemptsWithoutNewPosts = 0
 
   try {
-    while (activeSession?.id === session.id) {
+    while (isCurrentRun(session.id, runId)) {
       if (isStopRequested)
         break
 
       if (hasReachedProfileEnd(attemptsWithoutNewPosts, maxAttemptsWithoutNewPosts)) {
-        await saveScrapedPosts(session)
-        activeSession = null
+        await saveScrapedPosts(session, runId)
+        cleanupSession(session.id, runId)
         return
       }
 
       const scrollDelay = getRandomDelay(scrollDelayRange.min, scrollDelayRange.max)
       await wait(scrollDelay)
 
-      if (activeSession?.id !== session.id || isStopRequested)
+      if (!isCurrentRun(session.id, runId) || isStopRequested)
         break
 
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
       await wait(1200)
 
-      if (activeSession?.id !== session.id || isStopRequested)
+      if (!isCurrentRun(session.id, runId) || isStopRequested)
         break
 
       const extraction = extractProfilePostsFromDocument(document, session.profile.name, seenPostIds)
@@ -138,18 +134,18 @@ async function runProfileScrape(session: DownloadSession) {
 
     if (isStopRequested) {
       progress = getStoppedScrapeProgress(session, scrapedPosts.length)
-      activeSession = null
+      cleanupSession(session.id, runId)
       return
     }
 
-    if (activeSession?.id === session.id)
-      await saveScrapedPosts(session)
+    if (isCurrentRun(session.id, runId))
+      await saveScrapedPosts(session, runId)
 
-    activeSession = null
+    cleanupSession(session.id, runId)
   }
   catch (error) {
     progress = getFailedScrapeProgress(session, scrapedPosts.length, error instanceof Error ? error.message : 'Profile scraping failed.')
-    activeSession = null
+    cleanupSession(session.id, runId)
   }
 }
 
@@ -157,7 +153,7 @@ function wait(delayMs: number) {
   return new Promise<void>(resolve => window.setTimeout(resolve, delayMs))
 }
 
-async function saveScrapedPosts(session: DownloadSession) {
+async function saveScrapedPosts(session: DownloadSession, runId: number) {
   const batch = buildDownloadBatch(session, scrapedPosts)
   progress = getSavingProgress(session, scrapedPosts.length, batch.items.length)
   const payload = { batch } as unknown as never
@@ -168,10 +164,32 @@ async function saveScrapedPosts(session: DownloadSession) {
     { context: 'background' } as never,
   ) as unknown as QueueDownloadBatchResponse
 
-  progress = response.failure
-    ? getFailedScrapeProgress(session, scrapedPosts.length, response.failure.message)
-    : getSavedProgress(session, scrapedPosts.length, response.queuedItemCount, response.downloadedFileCount)
+  if (!isCurrentRun(session.id, runId))
+    return
+
+  progress = getSavedProgress(
+    session,
+    scrapedPosts.length,
+    response.queuedItemCount,
+    response.downloadedFileCount,
+    response.failure?.message,
+  )
 
   if (!response.failure && batch.items.length === 0)
     progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+}
+
+function isCurrentRun(sessionId: string, runId: number) {
+  return activeSession?.id === sessionId && activeRunId === runId
+}
+
+function cleanupSession(sessionId: string, runId: number) {
+  if (!isCurrentRun(sessionId, runId))
+    return
+
+  activeSession = null
+  scrapedPosts = []
+  seenPostIds = new Set()
+  isStopRequested = false
+  lastCooldownPostCount = 0
 }
