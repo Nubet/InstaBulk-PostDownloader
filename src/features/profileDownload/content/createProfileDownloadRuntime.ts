@@ -1,5 +1,6 @@
 import { sendMessage } from 'webext-bridge/content-script'
 import { buildDownloadBatch } from '../application/buildDownloadBatch'
+import { selectScrapedPosts } from '../application/selectScrapedPosts'
 import { startDownloadSession } from '../application/startDownloadSession'
 import { extensionMessage } from '../contracts/messages'
 import {
@@ -16,13 +17,17 @@ import {
   createScrapeDebugEntry,
   getCompletedScrapeProgress,
   getFailedScrapeProgress,
+  getReadyToDownloadProgress,
   getSavedProgress,
   getSavingProgress,
   getScrapeLoopProgress,
   getStoppedScrapeProgress,
+  isActiveScrapePhase,
 } from '../presentation/scrapeState'
 import type { ScrapeDebugEntry, ScrapeProgress } from '../presentation/scrapeState'
 import type {
+  DownloadSelectedPostsRequest,
+  DownloadSelectedPostsResponse,
   GetScrapeStatusResponse,
   QueueDownloadBatchResponse,
   StartProfileDownloadRequest,
@@ -35,12 +40,14 @@ export interface ProfileDownloadRuntime {
   getScrapeStatus: () => GetScrapeStatusResponse
   startProfileDownload: (request: StartProfileDownloadRequest) => Promise<StartProfileDownloadResponse>
   stopProfileDownload: (request: StopProfileDownloadRequest) => StopProfileDownloadResponse
+  downloadSelectedPosts: (request: DownloadSelectedPostsRequest) => Promise<DownloadSelectedPostsResponse>
 }
 
 export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
   let activeSession: DownloadSession | null = null
   let progress: ScrapeProgress = createIdleProgress('Open a public Instagram profile first.')
   let scrapedPosts: ScrapedPost[] = []
+  let collectedPosts: ScrapedPost[] = []
   let seenPostIds = new Set<string>()
   let isStopRequested = false
   let lastCooldownPostCount = 0
@@ -48,7 +55,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
   let debugLog: ScrapeDebugEntry[] = []
 
   function getScrapeStatus(): GetScrapeStatusResponse {
-    return { progress, debugLog }
+    return { progress, debugLog, posts: collectedPosts }
   }
 
   async function startProfileDownload(request: StartProfileDownloadRequest): Promise<StartProfileDownloadResponse> {
@@ -61,7 +68,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
       if (!response.accepted)
         addDebugLog('warn', 'session', 'Rejected start request because another session is already active.')
 
-      return { ...response, debugLog }
+      return { ...response, debugLog, posts: collectedPosts }
     }
 
     activeRunId += 1
@@ -71,6 +78,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     debugLog = []
     lastCooldownPostCount = 0
     scrapedPosts = []
+    collectedPosts = []
 
     addDebugLog('info', 'session', `Started scrape session for @${activeSession.profile.name}.`, `url=${activeSession.profile.url}`)
     const foundInitialPosts = await scanVisiblePosts(activeSession, 'Initial DOM scan before scroll.')
@@ -89,6 +97,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     return {
       ...response,
       debugLog,
+      posts: collectedPosts,
       progress,
     }
   }
@@ -120,7 +129,77 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     return {
       accepted,
       debugLog,
+      posts: collectedPosts,
       progress,
+    }
+  }
+
+  async function downloadSelectedPosts(request: DownloadSelectedPostsRequest): Promise<DownloadSelectedPostsResponse> {
+    if (!activeSession || activeSession.id !== request.sessionId) {
+      return {
+        accepted: false,
+        progress: {
+          ...progress,
+          message: 'Refresh the popup and fetch the profile again before saving posts.',
+        },
+        debugLog,
+        posts: collectedPosts,
+        queuedItemCount: 0,
+        downloadedFileCount: 0,
+        failure: null,
+      }
+    }
+
+    if (isActiveScrapePhase(progress.phase)) {
+      return {
+        accepted: false,
+        progress: {
+          ...progress,
+          message: 'Wait for the profile scan to finish before saving posts.',
+        },
+        debugLog,
+        posts: collectedPosts,
+        queuedItemCount: 0,
+        downloadedFileCount: 0,
+        failure: null,
+      }
+    }
+
+    const selectedPosts = selectScrapedPosts(collectedPosts, request.selection)
+    const batch = buildDownloadBatch(activeSession, selectedPosts)
+    progress = getSavingProgress(activeSession, collectedPosts.length, batch.items.length)
+    addDebugLog('info', 'downloads', 'Queued selected posts for saving.', `selectedPosts=${selectedPosts.length}, files=${batch.items.length}`)
+
+    const response = await sendMessage(
+      extensionMessage.queueDownloadBatch,
+      { batch } as unknown as never,
+      { context: 'background' } as never,
+    ) as unknown as QueueDownloadBatchResponse
+
+    if (response.failure)
+      addDebugLog('warn', 'downloads', 'Selected download completed with a warning.', response.failure.message)
+    else
+      addDebugLog('info', 'downloads', 'Selected download finished successfully.', `downloadedFiles=${response.downloadedFileCount}`)
+
+    progress = getSavedProgress(
+      activeSession,
+      collectedPosts.length,
+      response.queuedItemCount,
+      response.downloadedFileCount,
+      response.failure?.message,
+    )
+
+    if (!response.failure && batch.items.length === 0)
+      progress = getReadyToDownloadProgress(activeSession, collectedPosts.length)
+
+    return {
+      accepted: true,
+      progress,
+      debugLog,
+      posts: collectedPosts,
+      queuedItemCount: response.queuedItemCount,
+      downloadedFileCount: response.downloadedFileCount,
+      failure: response.failure,
     }
   }
 
@@ -135,7 +214,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
           break
 
         if (hasReachedProfileEnd(attemptsWithoutNewPosts, profileScrapePolicy.maxAttemptsWithoutNewPosts)) {
-          await saveScrapedPosts(session, runId)
+          await finalizeScrapedPosts(session, runId)
           cleanupSession(session.id, runId)
           return
         }
@@ -160,8 +239,8 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
         }
         else {
           if (!profileScrapePolicy.enableEndOfProfileRetries) {
-            addDebugLog('info', 'session', 'No new posts found and end-of-profile retries are disabled. Saving current batch.')
-            await saveScrapedPosts(session, runId)
+            addDebugLog('info', 'session', 'No new posts found and end-of-profile retries are disabled. Finalizing fetched posts.')
+            await finalizeScrapedPosts(session, runId)
             cleanupSession(session.id, runId)
             return
           }
@@ -187,7 +266,7 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
       }
 
       if (isCurrentRun(session.id, runId))
-        await saveScrapedPosts(session, runId)
+        await finalizeScrapedPosts(session, runId)
 
       cleanupSession(session.id, runId)
     }
@@ -198,40 +277,18 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     }
   }
 
-  async function saveScrapedPosts(session: DownloadSession, runId: number) {
+  async function finalizeScrapedPosts(session: DownloadSession, runId: number) {
     scrapedPosts = await enrichPostsWithAuthoredCaptions(scrapedPosts, session, runId)
 
     if (!isCurrentRun(session.id, runId))
       return
 
-    const batch = buildDownloadBatch(session, scrapedPosts)
-    progress = getSavingProgress(session, scrapedPosts.length, batch.items.length)
-    addDebugLog('info', 'downloads', 'Queued scraped posts for saving.', `posts=${scrapedPosts.length}, files=${batch.items.length}`)
+    collectedPosts = scrapedPosts
+    progress = getReadyToDownloadProgress(session, collectedPosts.length)
+    addDebugLog('info', 'downloads', 'Fetched posts are ready for selection in the popup.', `posts=${collectedPosts.length}`)
 
-    const response = await sendMessage(
-      extensionMessage.queueDownloadBatch,
-      { batch } as unknown as never,
-      { context: 'background' } as never,
-    ) as unknown as QueueDownloadBatchResponse
-
-    if (!isCurrentRun(session.id, runId))
-      return
-
-    if (response.failure)
-      addDebugLog('warn', 'downloads', 'Download batch completed with a warning.', response.failure.message)
-    else
-      addDebugLog('info', 'downloads', 'Download batch finished successfully.', `downloadedFiles=${response.downloadedFileCount}`)
-
-    progress = getSavedProgress(
-      session,
-      scrapedPosts.length,
-      response.queuedItemCount,
-      response.downloadedFileCount,
-      response.failure?.message,
-    )
-
-    if (!response.failure && batch.items.length === 0)
-      progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+    if (collectedPosts.length === 0)
+      progress = getCompletedScrapeProgress(session, collectedPosts.length)
   }
 
   async function enrichPostsWithAuthoredCaptions(posts: ScrapedPost[], session: DownloadSession, runId: number): Promise<ScrapedPost[]> {
@@ -319,7 +376,6 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     if (!isCurrentRun(sessionId, runId))
       return
 
-    activeSession = null
     scrapedPosts = []
     seenPostIds = new Set()
     isStopRequested = false
@@ -338,5 +394,6 @@ export function createProfileDownloadRuntime(): ProfileDownloadRuntime {
     getScrapeStatus,
     startProfileDownload,
     stopProfileDownload,
+    downloadSelectedPosts,
   }
 }

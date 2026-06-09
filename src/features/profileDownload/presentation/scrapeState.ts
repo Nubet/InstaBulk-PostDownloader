@@ -15,6 +15,7 @@ export type ScrapePhase =
   | 'starting'
   | 'scraping'
   | 'cooldown'
+  | 'ready'
   | 'saving'
   | 'completed'
   | 'stopped'
@@ -79,6 +80,20 @@ export function getSavingProgress(session: DownloadSession, discoveredPostCount:
     queuedFileCount,
     downloadedFileCount: 0,
     message: `Saving ${queuedFileCount} file${queuedFileCount === 1 ? '' : 's'}.`,
+  }
+}
+
+export function getReadyToDownloadProgress(session: DownloadSession, discoveredPostCount: number): ScrapeProgress {
+  return {
+    sessionId: session.id,
+    profileName: session.profile.name,
+    phase: 'ready',
+    discoveredPostCount,
+    queuedFileCount: 0,
+    downloadedFileCount: 0,
+    message: discoveredPostCount > 0
+      ? `Fetched ${discoveredPostCount} post${discoveredPostCount === 1 ? '' : 's'}. Choose what to save.`
+      : 'No posts found on the profile.',
   }
 }
 

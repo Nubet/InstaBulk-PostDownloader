@@ -1,6 +1,7 @@
 import { onMessage } from 'webext-bridge/content-script'
 import { extensionMessage } from '../contracts/messages'
 import type {
+  DownloadSelectedPostsRequest,
   StartProfileDownloadRequest,
   StopProfileDownloadRequest,
 } from '../contracts/messages'
@@ -19,5 +20,9 @@ export function registerProfileDownloadHandlers() {
 
   onMessage(extensionMessage.stopProfileDownload, ({ data }) => {
     return runtime.stopProfileDownload(data as unknown as StopProfileDownloadRequest)
+  })
+
+  onMessage(extensionMessage.downloadSelectedPosts, async ({ data }) => {
+    return runtime.downloadSelectedPosts(data as unknown as DownloadSelectedPostsRequest)
   })
 }
