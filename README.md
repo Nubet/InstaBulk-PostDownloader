@@ -1,12 +1,8 @@
-<div style="height: 4px; background: linear-gradient(90deg, #833AB4, #E1306C, #FCAF45); border-radius: 2px; margin-bottom: 24px;"></div>
-
 ![InstaBulk banner](images/instabulk-banner.png)
 
 # InstaBulk Profile Downloader
 
-<p align="center">
-  Browser extension for downloading Instagram profile content.
-</p>
+Browser extension for downloading Instagram profile content.
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
@@ -17,73 +13,77 @@
   <img src="https://img.shields.io/github/license/nubet/InstaBulk-PostDownloader?style=flat-square" alt="MIT">
 </p>
 
-<hr style="border: none; height: 1px; background: linear-gradient(90deg, transparent, #833AB4, #E1306C, transparent); margin: 28px 0;">
+---
 
-## Getting started
+> [!NOTE]
+>
+> ## Getting started
+>
+> ```bash
+> pnpm install
+> pnpm dev          # Chrome (HMR on localhost:3303)
+> pnpm dev-firefox  # Firefox (HMR on localhost:3303)
+> ```
+>
+> Load `extension-chromium/` or `extension-firefox/` as an unpacked extension.
 
-```bash
-pnpm install
-pnpm dev          # Chrome (HMR on localhost:3303)
-pnpm dev-firefox  # Firefox (HMR on localhost:3303)
-```
+---
 
-Load `extension-chromium/` or `extension-firefox/` as an unpacked extension.
+> [!TIP]
+>
+> ## Build
+>
+> Each browser builds to its own directory.
+>
+> | Command | Target | Output |
+> |---|---|---|
+> | `pnpm build:chromium` | Chrome | `extension-chromium/` |
+> | `pnpm build:firefox` | Firefox | `extension-firefox/` |
+> | `pnpm build:all` | Both | both directories |
+>
+> ### Package
+>
+> ```bash
+> pnpm pack:zip       # Chrome Web Store
+> pnpm pack:xpi       # Firefox Add-ons
+> pnpm package:all    # both at once
+> ```
 
-<hr style="border: none; height: 1px; background: linear-gradient(90deg, transparent, #833AB4, #E1306C, transparent); margin: 28px 0;">
+---
 
-## Build
+> [!IMPORTANT]
+>
+> ## Release
+>
+> ```bash
+> pnpm version patch|minor|major
+> pnpm release:tag
+> git push && git push --tags
+> ```
+>
+> What happens next:
+>
+> 1. The local `pre-push` hook validates that any pushed `v*` tag matches `package.json` version.
+> 2. GitHub Actions runs on tag push, verifies the tag again, then runs `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
+> 3. The workflow builds browser artifacts and publishes a GitHub Release with semantic filenames under `release/`.
+>
+> Produced artifacts:
+>
+> ```text
+> instabulk-profile-downloader-<version>-chromium.zip
+> instabulk-profile-downloader-<version>-firefox.xpi
+> ```
+>
+> ### Checks
+>
+> ```bash
+> pnpm typecheck
+> pnpm lint
+> pnpm test
+> ```
 
-Each browser builds to its own directory.
-
-| Command | Target | Output |
-|---|---|---|
-| `pnpm build:chromium` | Chrome | `extension-chromium/` |
-| `pnpm build:firefox` | Firefox | `extension-firefox/` |
-| `pnpm build:all` | Both | both directories |
-
-### Package
-
-```bash
-pnpm pack:zip       # Chrome Web Store
-pnpm pack:xpi       # Firefox Add-ons
-pnpm package:all    # both at once
-```
-
-<hr style="border: none; height: 1px; background: linear-gradient(90deg, transparent, #833AB4, #E1306C, transparent); margin: 28px 0;">
-
-## Release
-
-```bash
-pnpm version patch|minor|major
-pnpm release:tag
-git push && git push --tags
-```
-
-What happens next:
-
-1. The local `pre-push` hook validates that any pushed `v*` tag matches `package.json` version.
-2. GitHub Actions runs on tag push, verifies the tag again, then runs `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
-3. The workflow builds browser artifacts and publishes a GitHub Release with semantic filenames under `release/`.
-
-Produced artifacts:
-
-```text
-instabulk-profile-downloader-<version>-chromium.zip
-instabulk-profile-downloader-<version>-firefox.xpi
-```
-
-### Checks
-
-```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-```
-
-<hr style="border: none; height: 1px; background: linear-gradient(90deg, transparent, #833AB4, #E1306C, transparent); margin: 28px 0;">
+---
 
 ## License
 
 MIT. This project is based on the `vitesse-webext` template by Anthony Fu. The original MIT copyright notice is preserved in `LICENSE`.
-
-<div style="height: 4px; background: linear-gradient(90deg, #FCAF45, #E1306C, #833AB4); border-radius: 2px; margin-top: 24px;"></div>
