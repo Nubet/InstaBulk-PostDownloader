@@ -71,9 +71,6 @@ export default defineConfig(({ command }) => ({
     outDir: r(`${browserOutDir}/dist`),
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
-    terserOptions: {
-      mangle: false,
-    },
     rollupOptions: {
       input: {
         popup: r('src/popup/index.html'),
