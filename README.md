@@ -1,4 +1,4 @@
-![InstaBulk banner](images/banner.png)
+![InstaBulk banner](images/instabulk-banner.png)
 
 # InstaBulk Profile Downloader
 
