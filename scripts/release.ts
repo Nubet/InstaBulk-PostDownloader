@@ -121,10 +121,24 @@ function gitTagExists(tagName: string) {
   return output === tagName
 }
 
+function isTagOnHead(tagName: string) {
+  const output = execFileSync('git', ['tag', '--points-at', 'HEAD', tagName], {
+    cwd: r(),
+    encoding: 'utf8',
+  }).trim()
+
+  return output === tagName
+}
+
 async function createTag() {
   const context = await getReleaseContext()
   validateVersion(context)
-  assert(!gitTagExists(context.tagName), `Git tag ${context.tagName} already exists.`)
+
+  if (gitTagExists(context.tagName)) {
+    assert(isTagOnHead(context.tagName), `Git tag ${context.tagName} already exists on a different commit.`)
+    log('REL', `tag ${context.tagName} already exists on HEAD`)
+    return
+  }
 
   run('git', ['tag', '-a', context.tagName, '-m', `release: ${context.tagName}`])
   log('REL', `created annotated tag ${context.tagName}`)

@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill'
 import type { DownloadItem } from '../domain/download'
 import { createDownloadUrl } from './createDownloadUrl'
 
