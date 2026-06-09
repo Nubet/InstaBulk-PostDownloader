@@ -108,26 +108,6 @@ const selectedPosts = computed(() => {
 
 const selectedPostCount = computed(() => selectedPosts.value.length)
 
-const selectedFileCount = computed(() => {
-  return selectedPosts.value.reduce((count, post) => count + (post.caption.trim() ? 2 : 1), 0)
-})
-
-const selectionSummary = computed(() => {
-  if (!hasFetchedPosts.value)
-    return 'Fetch the profile first to choose posts.'
-
-  if (selectionMode.value === 'range')
-    return rangeSelectionError.value ?? `Posts ${rangeStart.value}-${rangeEnd.value} will be saved.`
-
-  if (selectionMode.value === 'manual') {
-    return selectedPostCount.value > 0
-      ? `${selectedPostCount.value} manually selected post${selectedPostCount.value === 1 ? '' : 's'} ready to save.`
-      : 'Pick at least one post from the grid.'
-  }
-
-  return `All ${selectedPostCount.value} fetched post${selectedPostCount.value === 1 ? '' : 's'} will be saved.`
-})
-
 const downloadSelectionLabel = computed(() => {
   if (selectionMode.value === 'all')
     return 'Download all'
@@ -414,220 +394,186 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="w-[392px] bg-[#edf0f4] p-3 text-left text-[#1f2937]">
-    <section class="rounded-[22px] border border-black/6 bg-white p-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#6b7280]">
-            Instagram Downloader
-          </p>
-          <h1 class="mt-1 text-[22px] font-semibold leading-none text-[#111827]">
-            InstaBulk
-          </h1>
-          <p class="mt-2 text-sm leading-5 text-[#6b7280]">
-            Fetch every post once, then decide exactly what gets saved.
-          </p>
+  <main class="w-[400px] bg-[#fbfbfd] text-[#1d1d1f] font-sans antialiased overflow-hidden select-none">
+    <header class="px-5 py-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-[#e5e5ea] sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-[8px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] to-[#d62976] flex items-center justify-center shadow-[0_2px_5px_rgba(214,41,118,0.3)]">
+          <div class="i-lucide-instagram text-white text-[15px]" />
         </div>
-
-        <div class="rounded-full border border-black/6 bg-[#f6f7f9] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">
-          {{ progress.phase }}
-        </div>
+        <h1 class="text-[17px] font-semibold tracking-tight text-[#1d1d1f]">
+          InstaBulk
+        </h1>
       </div>
+      <div class="px-2.5 py-1 rounded-full bg-[#f2f2f7] text-[10px] font-semibold text-[#86868b] uppercase tracking-wider">
+        {{ progress.phase }}
+      </div>
+    </header>
 
-      <div class="mt-4 rounded-[18px] border border-black/6 bg-[#f7f8fa] p-3">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">
+    <div class="p-5 space-y-5">
+      <section class="rounded-[16px] bg-white border border-[#e5e5ea] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        <h2 class="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider mb-1.5">
           Status
-        </p>
-        <p class="mt-2 text-sm leading-5 text-[#111827]">
+        </h2>
+        <p class="text-[14px] leading-relaxed text-[#1d1d1f]">
           {{ progress.message }}
         </p>
-      </div>
 
-      <div v-if="hasProgressCounts" class="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div class="rounded-[18px] border border-black/6 bg-[#f7f8fa] px-2 py-3">
-          <p class="text-lg font-semibold text-[#111827]">
-            {{ progress.discoveredPostCount }}
-          </p>
-          <p class="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#6b7280]">
-            Found
-          </p>
+        <div v-if="hasProgressCounts" class="mt-4 pt-4 border-t border-[#f2f2f7] grid grid-cols-3 gap-2 divide-x divide-[#f2f2f7]">
+          <div class="text-center">
+            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
+              {{ progress.discoveredPostCount }}
+            </p>
+            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+              Found
+            </p>
+          </div>
+          <div class="text-center">
+            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
+              {{ progress.queuedFileCount }}
+            </p>
+            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+              Queued
+            </p>
+          </div>
+          <div class="text-center">
+            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
+              {{ progress.downloadedFileCount }}
+            </p>
+            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+              Saved
+            </p>
+          </div>
         </div>
-        <div class="rounded-[18px] border border-black/6 bg-[#f7f8fa] px-2 py-3">
-          <p class="text-lg font-semibold text-[#111827]">
-            {{ progress.queuedFileCount }}
-          </p>
-          <p class="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#6b7280]">
-            Queued
-          </p>
-        </div>
-        <div class="rounded-[18px] border border-black/6 bg-[#f7f8fa] px-2 py-3">
-          <p class="text-lg font-semibold text-[#111827]">
-            {{ progress.downloadedFileCount }}
-          </p>
-          <p class="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#6b7280]">
-            Saved
-          </p>
-        </div>
-      </div>
+      </section>
 
-      <button class="btn mt-4 w-full rounded-[16px] px-4 py-3 text-sm font-semibold transition-colors" :class="actionClass" :disabled="isBusy" @click="handleAction">
+      <button
+        class="btn w-full rounded-[14px] px-4 py-3.5 text-[15px] font-semibold flex items-center justify-center gap-2"
+        :class="actionClass"
+        :disabled="isBusy"
+        @click="handleAction"
+      >
+        <div v-if="isBusy" class="i-lucide-loader-2 animate-spin text-[18px]" />
         {{ actionLabel }}
       </button>
 
-      <section v-if="canShowSelectionPanel" class="mt-4 rounded-[20px] border border-black/6 bg-[#f7f8fa] p-3">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-sm font-semibold text-[#111827]">
-              Download Scope
-            </h2>
-            <p class="mt-1 text-xs leading-5 text-[#6b7280]">
-              {{ selectionSummary }}
-            </p>
-          </div>
-
-          <div class="rounded-[16px] border border-black/6 bg-white px-3 py-2 text-right text-[11px] text-[#6b7280] shadow-[0_1px_1px_rgba(15,23,42,0.04)]">
-            <p class="font-semibold uppercase tracking-[0.14em] text-[#111827]">
-              Selection
-            </p>
-            <p class="mt-1">
-              {{ selectedPostCount }} posts
-            </p>
-            <p>
-              {{ selectedFileCount }} files
-            </p>
-          </div>
+      <section v-if="canShowSelectionPanel" class="space-y-4">
+        <div class="flex items-end justify-between px-1">
+          <h2 class="text-[15px] font-semibold tracking-tight text-[#1d1d1f]">
+            Select Posts
+          </h2>
+          <span class="text-[13px] font-medium text-[#86868b]">{{ selectedPostCount }} selected</span>
         </div>
 
-        <div class="mt-3 rounded-[16px] border border-black/6 bg-white p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-          <div class="grid grid-cols-3 gap-1">
-            <button
-              class="rounded-[12px] px-3 py-2 text-xs font-semibold text-[#4b5563] transition-colors"
-              :class="selectionMode === 'all' ? 'bg-[#111827] text-white shadow-[0_1px_2px_rgba(15,23,42,0.18)]' : 'hover:bg-[#f3f4f6]'"
-              @click="setSelectionMode('all')"
-            >
-              All
-            </button>
-            <button
-              class="rounded-[12px] px-3 py-2 text-xs font-semibold text-[#4b5563] transition-colors"
-              :class="selectionMode === 'range' ? 'bg-[#111827] text-white shadow-[0_1px_2px_rgba(15,23,42,0.18)]' : 'hover:bg-[#f3f4f6]'"
-              @click="setSelectionMode('range')"
-            >
-              Range
-            </button>
-            <button
-              class="rounded-[12px] px-3 py-2 text-xs font-semibold text-[#4b5563] transition-colors"
-              :class="selectionMode === 'manual' ? 'bg-[#111827] text-white shadow-[0_1px_2px_rgba(15,23,42,0.18)]' : 'hover:bg-[#f3f4f6]'"
-              @click="setSelectionMode('manual')"
-            >
-              Manual
-            </button>
-          </div>
+        <div class="flex p-[3px] bg-[#efeff4] rounded-[10px]">
+          <button
+            v-for="mode in ['all', 'range', 'manual']" :key="mode"
+            class="flex-1 py-1.5 text-[13px] font-medium rounded-[7px] transition-all capitalize"
+            :class="selectionMode === mode ? 'bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_1px_rgba(0,0,0,0.06)]' : 'text-[#86868b] hover:text-[#1d1d1f]'"
+            @click="setSelectionMode(mode as any)"
+          >
+            {{ mode }}
+          </button>
         </div>
 
-        <div v-if="selectionMode === 'range'" class="mt-3 rounded-[16px] border border-black/6 bg-white p-3">
-          <div class="grid grid-cols-2 gap-3">
-            <label class="text-xs text-[#6b7280]">
-              <span class="mb-1 block font-semibold uppercase tracking-[0.12em]">Start</span>
-              <input v-model="rangeStart" type="number" min="1" :max="posts.length" class="w-full rounded-[12px] border border-black/8 bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#9ca3af]">
-            </label>
-            <label class="text-xs text-[#6b7280]">
-              <span class="mb-1 block font-semibold uppercase tracking-[0.12em]">End</span>
-              <input v-model="rangeEnd" type="number" min="1" :max="posts.length" class="w-full rounded-[12px] border border-black/8 bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#9ca3af]">
-            </label>
+        <div v-if="selectionMode === 'range'" class="rounded-[16px] bg-white border border-[#e5e5ea] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
+              <label class="block text-[11px] font-semibold text-[#86868b] uppercase tracking-wider mb-1.5">Start</label>
+              <input v-model="rangeStart" type="number" min="1" :max="posts.length" class="w-full bg-[#f2f2f7] rounded-[10px] px-3 py-2.5 text-[15px] text-[#1d1d1f] font-medium border border-transparent focus:bg-white focus:border-[#007aff] focus:ring-4 focus:ring-[#007aff]/10 outline-none transition-all">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[11px] font-semibold text-[#86868b] uppercase tracking-wider mb-1.5">End</label>
+              <input v-model="rangeEnd" type="number" min="1" :max="posts.length" class="w-full bg-[#f2f2f7] rounded-[10px] px-3 py-2.5 text-[15px] text-[#1d1d1f] font-medium border border-transparent focus:bg-white focus:border-[#007aff] focus:ring-4 focus:ring-[#007aff]/10 outline-none transition-all">
+            </div>
           </div>
-
-          <p class="mt-2 text-xs" :class="rangeSelectionError ? 'text-[#b45309]' : 'text-[#6b7280]'">
-            {{ rangeSelectionError ?? `Use profile order. Post 1 is the newest visible post in the fetched snapshot.` }}
+          <p class="text-[12px] leading-snug" :class="rangeSelectionError ? 'text-[#ff3b30] font-medium' : 'text-[#86868b]'">
+            {{ rangeSelectionError ?? 'Use profile order. Post 1 is the newest visible post.' }}
           </p>
         </div>
 
-        <div v-if="selectionMode === 'manual'" class="mt-3">
-          <div class="mb-2 flex items-center justify-between gap-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">
-              Pick Posts
-            </p>
-
-            <div class="flex gap-2">
-              <button class="rounded-full border border-black/8 bg-white px-3 py-1 text-[11px] font-medium text-[#4b5563] hover:bg-[#f3f4f6]" @click="selectAllManualPosts">
-                Select all
+        <div v-if="selectionMode === 'manual'" class="space-y-3">
+          <div class="flex justify-between items-center px-1">
+            <span class="text-[12px] font-medium text-[#86868b]">Select individual posts</span>
+            <div class="flex gap-4">
+              <button class="text-[13px] font-semibold text-[#007aff] hover:opacity-80 transition-opacity" @click="selectAllManualPosts">
+                Select All
               </button>
-              <button class="rounded-full border border-black/8 bg-white px-3 py-1 text-[11px] font-medium text-[#4b5563] hover:bg-[#f3f4f6]" @click="clearManualSelection">
+              <button class="text-[13px] font-semibold text-[#007aff] hover:opacity-80 transition-opacity" @click="clearManualSelection">
                 Clear
               </button>
             </div>
           </div>
 
-          <div class="max-h-74 space-y-2 overflow-y-auto pr-1">
-            <button
-              v-for="(post, index) in posts"
-              :key="post.id"
-              class="w-full rounded-[16px] border p-2 text-left transition-colors"
-              :class="manualSelectionSet.has(post.id) ? 'border-[#9ca3af] bg-[#eef2f7]' : 'border-black/6 bg-white hover:bg-[#f8fafc]'"
-              @click="toggleManualPost(post.id)"
-            >
-              <div class="flex gap-3">
-                <img :src="post.imageUrl" alt="" class="h-16 w-16 rounded-[12px] border border-black/5 object-cover">
-
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#111827]">
-                      Post {{ index + 1 }}
-                    </p>
-                    <span class="rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" :class="manualSelectionSet.has(post.id) ? 'bg-[#111827] text-white' : 'bg-[#f3f4f6] text-[#6b7280]'">
-                      {{ manualSelectionSet.has(post.id) ? 'Selected' : 'Idle' }}
-                    </span>
+          <div class="max-h-[280px] overflow-y-auto overflow-x-hidden custom-scrollbar bg-white rounded-[14px] border border-[#e5e5ea] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div class="divide-y divide-[#e5e5ea]">
+              <button
+                v-for="(post, index) in posts"
+                :key="post.id"
+                class="w-full flex items-center gap-3.5 p-3 transition-colors hover:bg-[#f2f2f7]/60 text-left group"
+                @click="toggleManualPost(post.id)"
+              >
+                <div class="flex-shrink-0">
+                  <div
+                    class="w-[22px] h-[22px] rounded-full border transition-all flex items-center justify-center shadow-sm"
+                    :class="manualSelectionSet.has(post.id) ? 'bg-[#007aff] border-[#007aff]' : 'border-[#c7c7cc] bg-white group-hover:border-[#a1a1a6]'"
+                  >
+                    <div v-if="manualSelectionSet.has(post.id)" class="i-lucide-check text-white text-[14px] font-bold" />
                   </div>
+                </div>
 
-                  <p class="mt-2 break-all text-[11px] text-[#6b7280]">
-                    {{ post.id }}
-                  </p>
-                  <p class="mt-2 text-xs leading-5 text-[#4b5563]">
+                <div class="w-11 h-11 rounded-[6px] overflow-hidden flex-shrink-0 bg-[#f2f2f7] border border-black/5">
+                  <img :src="post.imageUrl" class="w-full h-full object-cover">
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[14px] font-medium text-[#1d1d1f]">Post {{ index + 1 }}</span>
+                    <span class="text-[10px] font-medium text-[#86868b] font-mono tracking-tight">{{ post.id }}</span>
+                  </div>
+                  <p class="text-[12px] text-[#86868b] truncate mt-0.5">
                     {{ formatCaptionPreview(post.caption) }}
                   </p>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="mt-4 flex gap-2">
-          <button class="btn btn-secondary flex-1 rounded-[16px] px-4 py-3 text-sm font-semibold" :disabled="isBusy || hasActiveSession || !progress.sessionId || !hasFetchedPosts" @click="selectionMode = 'all'; downloadSelectedPosts()">
-            Download all
+        <div class="flex gap-2.5 mt-2">
+          <button
+            v-if="selectionMode !== 'all'"
+            class="btn rounded-[14px] px-4 py-3.5 text-[14px] font-semibold bg-[#f2f2f7] text-[#1d1d1f] hover:bg-[#e5e5ea] flex-shrink-0"
+            :disabled="isBusy || hasActiveSession || !progress.sessionId || !hasFetchedPosts"
+            @click="selectionMode = 'all'; downloadSelectedPosts()"
+          >
+            Download All
           </button>
-          <button class="btn btn-primary flex-1 rounded-[16px] px-4 py-3 text-sm font-semibold" :disabled="!canDownloadSelection" @click="downloadSelectedPosts">
+          <button
+            class="btn flex-1 rounded-[14px] px-4 py-3.5 text-[15px] font-semibold text-white bg-gradient-to-r from-[#fa7e1e] via-[#d62976] to-[#962fbf] shadow-[0_4px_14px_rgba(214,41,118,0.25)] hover:shadow-[0_6px_20px_rgba(214,41,118,0.35)] hover:-translate-y-[1px] flex justify-center items-center gap-2"
+            :disabled="!canDownloadSelection || isBusy"
+            @click="downloadSelectedPosts"
+          >
+            <div class="i-lucide-download text-[18px]" />
             {{ downloadSelectionLabel }}
           </button>
         </div>
       </section>
 
-      <section class="mt-4">
-        <div class="flex items-center justify-between gap-2">
-          <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-[#6b7280]">
-            Session Log
-          </h2>
-          <p class="text-[11px] text-[#9ca3af]">
-            {{ visibleDebugLog.length }} recent entries
+      <details class="group mt-4 [&_summary::-webkit-details-marker]:hidden">
+        <summary class="flex justify-between items-center cursor-pointer list-none text-[12px] font-semibold uppercase tracking-wider text-[#86868b] hover:text-[#1d1d1f] transition-colors py-2 px-1">
+          <span>Session Log</span>
+          <div class="i-lucide-chevron-down text-[16px] transform transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div class="mt-2 bg-[#f2f2f7] rounded-[12px] p-3 text-[11px] font-mono text-[#86868b] max-h-[160px] overflow-y-auto custom-scrollbar border border-black/5 shadow-inner">
+          <p v-if="visibleDebugLog.length === 0" class="text-center py-4 text-[#a1a1a6]">
+            No logs yet.
           </p>
-        </div>
-
-        <div class="mt-2 max-h-58 overflow-y-auto rounded-[18px] border border-black/6 bg-[#fbfbfc] px-3 py-2 font-mono text-[11px] leading-4 text-[#374151]">
-          <p v-if="visibleDebugLog.length === 0" class="py-2 text-[#9ca3af]">
-            No session logs yet.
-          </p>
-
-          <div v-for="entry in visibleDebugLog" :key="entry.id" class="border-b border-black/5 py-2 last:border-b-0">
-            <p>
-              [{{ entry.level }}][{{ entry.scope }}] {{ entry.message }}
-            </p>
-            <p class="mt-1 text-[#9ca3af]">
-              {{ new Date(entry.timestamp).toLocaleTimeString() }}
-            </p>
-            <p v-if="entry.details" class="mt-1 break-words text-[#6b7280]">
-              {{ entry.details }}
-            </p>
+          <div v-for="entry in visibleDebugLog" :key="entry.id" class="mb-2 last:mb-0">
+            <span class="text-[#1d1d1f] font-semibold">[{{ entry.level }}]</span>
+            <span class="ml-1">{{ entry.message }}</span>
           </div>
         </div>
-      </section>
-    </section>
+      </details>
+    </div>
   </main>
 </template>
