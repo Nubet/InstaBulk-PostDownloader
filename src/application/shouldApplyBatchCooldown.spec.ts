@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldApplyBatchCooldown } from './shouldApplyBatchCooldown'
+import { shouldApplyBatchCooldown } from '~/features/profileDownload/domain/scrapePolicy'
 
 describe('shouldApplyBatchCooldown', () => {
   it('returns true when a new batch threshold is crossed', () => {

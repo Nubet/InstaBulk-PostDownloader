@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createDownloadUrl } from './createDownloadUrl'
-import type { DownloadItem } from '~/domain/download'
+import { createDownloadUrl } from '~/features/downloads/background/createDownloadUrl'
+import type { DownloadItem } from '~/features/downloads/domain/download'
 
 describe('createDownloadUrl', () => {
   afterEach(() => {

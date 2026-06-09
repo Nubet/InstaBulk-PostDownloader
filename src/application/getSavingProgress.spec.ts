@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getSavingProgress } from './getSavingProgress'
-import type { DownloadSession } from '~/domain/download'
+import { getSavingProgress } from '~/features/profileDownload/presentation/scrapeState'
+import type { DownloadSession } from '~/features/profileDownload/domain/profileDownload'
 
 describe('getSavingProgress', () => {
   it('creates saving progress with queued file count', () => {

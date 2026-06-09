@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateInstagramProfileUrl } from './validateInstagramProfileUrl'
+import { validateInstagramProfileUrl } from '~/features/profileDownload/domain/profileDownload'
 
 describe('validateInstagramProfileUrl', () => {
   it('accepts Instagram profile URLs', () => {

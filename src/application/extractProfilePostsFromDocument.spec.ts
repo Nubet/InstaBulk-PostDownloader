@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractProfilePostsFromDocument } from './extractProfilePostsFromDocument'
+import { extractProfilePostsFromDocument } from '~/features/profileDownload/infrastructure/extractProfilePostsFromDocument'
 
 describe('extractProfilePostsFromDocument', () => {
   it('extracts unique posts from profile anchors', () => {

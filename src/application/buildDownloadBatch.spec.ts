@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildDownloadBatch } from './buildDownloadBatch'
-import type { DownloadSession, ScrapedPost } from '~/domain/download'
+import { buildDownloadBatch } from '~/features/profileDownload/application/buildDownloadBatch'
+import type { DownloadSession, ScrapedPost } from '~/features/profileDownload/domain/profileDownload'
 
 describe('buildDownloadBatch', () => {
   it('creates download items for image and caption files', () => {

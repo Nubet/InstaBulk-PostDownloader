@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getRandomDelay } from './getRandomDelay'
+import { getRandomDelay } from '~/features/profileDownload/domain/scrapePolicy'
 
 describe('getRandomDelay', () => {
   it('returns the lower bound for random 0', () => {

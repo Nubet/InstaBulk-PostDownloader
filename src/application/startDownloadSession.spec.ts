@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { startDownloadSession } from './startDownloadSession'
-import type { DownloadSession, ScrapeProgress } from '~/domain/download'
+import { startDownloadSession } from '~/features/profileDownload/application/startDownloadSession'
+import type { DownloadSession } from '~/features/profileDownload/domain/profileDownload'
+import type { ScrapeProgress } from '~/features/profileDownload/presentation/scrapeState'
 
 describe('startDownloadSession', () => {
   it('starts a new session when none is active', () => {

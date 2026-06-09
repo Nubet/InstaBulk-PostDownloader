@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasReachedProfileEnd } from './hasReachedProfileEnd'
+import { hasReachedProfileEnd } from '~/features/profileDownload/domain/scrapePolicy'
 
 describe('hasReachedProfileEnd', () => {
   it('returns false before the threshold', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDownloadSession } from './createDownloadSession'
+import { createDownloadSession } from '~/features/profileDownload/domain/profileDownload'
 
 describe('createDownloadSession', () => {
   it('creates a session from a profile url', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizePathSegment } from './sanitizePathSegment'
+import { sanitizePathSegment } from '~/features/profileDownload/domain/profileDownload'
 
 describe('sanitizePathSegment', () => {
   it('replaces forbidden file path characters', () => {
