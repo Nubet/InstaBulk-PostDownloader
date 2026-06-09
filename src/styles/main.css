@@ -5,8 +5,31 @@ body,
   padding: 0;
 }
 
+body {
+  font-family: 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  background: #edf0f4;
+  color: #1f2937;
+}
+
 .btn {
-  @apply px-4 py-1 rounded inline-block
-    text-white cursor-pointer
-    disabled:cursor-default disabled:bg-gray-600 disabled:opacity-50;
+  @apply inline-block cursor-pointer disabled:cursor-default disabled:opacity-50;
+}
+
+.btn-primary {
+  background: #111827;
+  color: white;
+}
+
+.btn-primary:hover:enabled {
+  background: #1f2937;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.btn-secondary:hover:enabled {
+  background: #e5e7eb;
 }
