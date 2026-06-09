@@ -42,12 +42,6 @@ const actionLabel = computed(() => {
   return hasFetchedPosts.value ? 'Fetch fresh snapshot' : 'Fetch all posts'
 })
 
-const actionClass = computed(() => {
-  return hasActiveSession.value
-    ? 'btn-secondary'
-    : 'btn-primary'
-})
-
 const hasProgressCounts = computed(() => {
   return progress.value.discoveredPostCount > 0 || progress.value.queuedFileCount > 0 || progress.value.downloadedFileCount > 0
 })
@@ -395,7 +389,7 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="w-[400px] bg-[#fbfbfd] text-[#1d1d1f] font-sans antialiased overflow-hidden select-none">
-    <header class="px-5 py-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-[#e5e5ea] sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+    <header class="px-5 py-4 flex items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
       <div class="flex items-center gap-2.5">
         <div class="w-7 h-7 rounded-[8px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] to-[#d62976] flex items-center justify-center shadow-[0_2px_5px_rgba(214,41,118,0.3)]">
           <div class="i-lucide-instagram text-white text-[15px]" />
@@ -404,55 +398,75 @@ onBeforeUnmount(() => {
           InstaBulk
         </h1>
       </div>
-      <div class="px-2.5 py-1 rounded-full bg-[#f2f2f7] text-[10px] font-semibold text-[#86868b] uppercase tracking-wider">
-        {{ progress.phase }}
+
+      <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#e5e5ea]">
+        <div v-if="isBusy || hasActiveSession" class="h-full bg-[#007aff] w-full origin-left animate-progress" />
       </div>
     </header>
 
     <div class="p-5 space-y-5">
-      <section class="rounded-[16px] bg-white border border-[#e5e5ea] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <h2 class="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider mb-1.5">
-          Status
-        </h2>
-        <p class="text-[14px] leading-relaxed text-[#1d1d1f]">
-          {{ progress.message }}
-        </p>
+      <section
+        class="rounded-[16px] bg-white border p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden transition-all duration-300"
+        :class="(isBusy || hasActiveSession) ? 'border-[#007aff]/30 shadow-[0_4px_12px_rgba(0,122,255,0.08)]' : 'border-[#e5e5ea]'"
+      >
+        <div v-if="isBusy || hasActiveSession" class="absolute inset-0 bg-gradient-to-r from-transparent via-[#007aff]/[0.03] to-transparent animate-shimmer" />
 
-        <div v-if="hasProgressCounts" class="mt-4 pt-4 border-t border-[#f2f2f7] grid grid-cols-3 gap-2 divide-x divide-[#f2f2f7]">
-          <div class="text-center">
-            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
-              {{ progress.discoveredPostCount }}
-            </p>
-            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
-              Found
-            </p>
+        <div class="relative">
+          <div class="flex justify-between items-center mb-1.5">
+            <h2
+              class="text-[11px] font-semibold uppercase tracking-wider transition-colors duration-300"
+              :class="(isBusy || hasActiveSession) ? 'text-[#007aff]' : 'text-[#86868b]'"
+            >
+              Status
+            </h2>
+            <div class="transition-opacity duration-300" :class="(isBusy || hasActiveSession) ? 'opacity-100' : 'opacity-0'">
+              <div class="i-lucide-loader-circle animate-spin text-[14px] text-[#007aff]" />
+            </div>
           </div>
-          <div class="text-center">
-            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
-              {{ progress.queuedFileCount }}
-            </p>
-            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
-              Queued
-            </p>
-          </div>
-          <div class="text-center">
-            <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f]">
-              {{ progress.downloadedFileCount }}
-            </p>
-            <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
-              Saved
-            </p>
+          <p
+            class="text-[14px] leading-relaxed transition-colors duration-300"
+            :class="(isBusy || hasActiveSession) ? 'text-[#1d1d1f] font-medium' : 'text-[#1d1d1f]'"
+          >
+            {{ progress.message }}
+          </p>
+
+          <div v-if="hasProgressCounts" class="mt-4 pt-4 border-t border-[#f2f2f7] grid grid-cols-3 gap-2 divide-x divide-[#f2f2f7]">
+            <div class="text-center">
+              <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f] transition-all duration-300" :class="hasActiveSession ? 'text-[#007aff]' : ''">
+                {{ progress.discoveredPostCount }}
+              </p>
+              <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+                Found
+              </p>
+            </div>
+            <div class="text-center">
+              <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f] transition-all duration-300" :class="hasActiveSession ? 'text-[#007aff]' : ''">
+                {{ progress.queuedFileCount }}
+              </p>
+              <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+                Queued
+              </p>
+            </div>
+            <div class="text-center">
+              <p class="text-[22px] font-medium tracking-tight text-[#1d1d1f] transition-all duration-300" :class="hasActiveSession ? 'text-[#007aff]' : ''">
+                {{ progress.downloadedFileCount }}
+              </p>
+              <p class="text-[10px] font-semibold text-[#86868b] uppercase tracking-widest mt-0.5">
+                Saved
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       <button
-        class="btn w-full rounded-[14px] px-4 py-3.5 text-[15px] font-semibold flex items-center justify-center gap-2"
-        :class="actionClass"
-        :disabled="isBusy"
+        class="btn w-full rounded-[14px] px-4 py-3.5 text-[15px] font-semibold flex items-center justify-center gap-2 transition-all duration-300"
+        :class="hasActiveSession ? 'bg-[#fff0f0] text-[#ff3b30] hover:bg-[#ffe5e5] border border-[#ff3b30]/10 shadow-sm' : 'btn-primary'"
+        :disabled="isBusy && !hasActiveSession"
         @click="handleAction"
       >
         <div v-if="isBusy" class="i-lucide-loader-2 animate-spin text-[18px]" />
+        <div v-else-if="hasActiveSession" class="i-lucide-square text-[14px] fill-current" />
         {{ actionLabel }}
       </button>
 
@@ -549,12 +563,14 @@ onBeforeUnmount(() => {
             Download All
           </button>
           <button
-            class="btn flex-1 rounded-[14px] px-4 py-3.5 text-[15px] font-semibold text-white bg-gradient-to-r from-[#fa7e1e] via-[#d62976] to-[#962fbf] shadow-[0_4px_14px_rgba(214,41,118,0.25)] hover:shadow-[0_6px_20px_rgba(214,41,118,0.35)] hover:-translate-y-[1px] flex justify-center items-center gap-2"
+            class="btn flex-1 rounded-[14px] px-4 py-3.5 text-[15px] font-semibold text-white bg-gradient-to-r from-[#fa7e1e] via-[#d62976] to-[#962fbf] shadow-[0_4px_14px_rgba(214,41,118,0.25)] hover:shadow-[0_6px_20px_rgba(214,41,118,0.35)] hover:-translate-y-[1px] flex justify-center items-center gap-2 relative overflow-hidden group"
             :disabled="!canDownloadSelection || isBusy"
             @click="downloadSelectedPosts"
           >
-            <div class="i-lucide-download text-[18px]" />
-            {{ downloadSelectionLabel }}
+            <div v-if="isBusy" class="absolute inset-0 bg-white/20 animate-shimmer" />
+            <div v-if="isBusy" class="i-lucide-loader-2 animate-spin text-[18px] relative z-10" />
+            <div v-else class="i-lucide-download text-[18px] relative z-10 transition-transform group-hover:-translate-y-[1px]" />
+            <span class="relative z-10">{{ downloadSelectionLabel }}</span>
           </button>
         </div>
       </section>
