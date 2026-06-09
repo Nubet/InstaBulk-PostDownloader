@@ -24,11 +24,19 @@ Run Firefox development build:
 pnpm dev-firefox
 ```
 
-Build production artifacts:
+Build Chromium production artifacts:
 
 ```bash
 pnpm build
 ```
+
+Build Firefox production artifacts:
+
+```bash
+pnpm build:firefox
+```
+
+For temporary Firefox installation, build with `pnpm build:firefox` first, then load the `extension/` directory.
 
 Run checks:
 
