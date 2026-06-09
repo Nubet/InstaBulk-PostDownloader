@@ -22,6 +22,7 @@ const scrollDelayRange = { min: 2000, max: 5500 }
 const cooldownDelayRange = { min: 60000, max: 120000 }
 const maxAttemptsWithoutNewPosts = 3
 const cooldownBatchSize = 30
+const enableEndOfProfileRetries = false
 
 let activeSession: DownloadSession | null = null
 let progress: ScrapeProgress = createIdleProgress('Open a public Instagram profile first.')
@@ -153,6 +154,13 @@ async function runProfileScrape(session: DownloadSession, runId: number) {
         progress = getScrapeLoopProgress(session, scrapedPosts.length, 'scraping', `Found ${scrapedPosts.length} post${scrapedPosts.length === 1 ? '' : 's'}. Continuing scan.`)
       }
       else {
+        if (!enableEndOfProfileRetries) {
+          addDebugLog('info', 'session', 'No new posts found and end-of-profile retries are disabled. Saving current batch.')
+          await saveScrapedPosts(session, runId)
+          cleanupSession(session.id, runId)
+          return
+        }
+
         attemptsWithoutNewPosts += 1
         progress = getScrapeLoopProgress(session, scrapedPosts.length, 'scraping', `No new posts found. Retry ${attemptsWithoutNewPosts}/${maxAttemptsWithoutNewPosts}.`)
       }
