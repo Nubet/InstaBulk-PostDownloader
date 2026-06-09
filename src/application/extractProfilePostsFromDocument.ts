@@ -75,7 +75,7 @@ export function extractProfilePostsFromDocument(document: Document, profileName:
     posts.push({
       id: postId,
       imageUrl,
-      caption: getCaption(anchor, media),
+      caption: '',
       profileName,
     })
   }
@@ -183,15 +183,4 @@ function getFirstSrcSetUrl(srcset: string | null): string | null {
   const [firstCandidate] = srcset.split(',')
 
   return firstCandidate?.trim().split(/\s+/)[0] || null
-}
-
-function getCaption(anchor: HTMLAnchorElement, media: HTMLImageElement | HTMLVideoElement): string {
-  if (media instanceof HTMLImageElement) {
-    const imageCaption = media.getAttribute('alt')?.trim()
-
-    if (imageCaption)
-      return imageCaption
-  }
-
-  return anchor.getAttribute('aria-label')?.trim() || anchor.textContent?.trim() || ''
 }

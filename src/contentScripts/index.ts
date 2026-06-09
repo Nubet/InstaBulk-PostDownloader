@@ -1,4 +1,5 @@
 import { onMessage, sendMessage } from 'webext-bridge/content-script'
+import { fetchInstagramPostCaption } from './fetchInstagramPostCaption'
 import { buildDownloadBatch } from '~/application/buildDownloadBatch'
 import { createIdleProgress } from '~/application/createIdleProgress'
 import { createScrapeDebugEntry } from '~/application/createScrapeDebugEntry'
@@ -189,6 +190,11 @@ function wait(delayMs: number) {
 }
 
 async function saveScrapedPosts(session: DownloadSession, runId: number) {
+  scrapedPosts = await enrichPostsWithAuthoredCaptions(scrapedPosts, session, runId)
+
+  if (!isCurrentRun(session.id, runId))
+    return
+
   const batch = buildDownloadBatch(session, scrapedPosts)
   progress = getSavingProgress(session, scrapedPosts.length, batch.items.length)
   addDebugLog('info', 'downloads', 'Queued scraped posts for saving.', `posts=${scrapedPosts.length}, files=${batch.items.length}`)
@@ -218,6 +224,44 @@ async function saveScrapedPosts(session: DownloadSession, runId: number) {
 
   if (!response.failure && batch.items.length === 0)
     progress = getCompletedScrapeProgress(session, scrapedPosts.length)
+}
+
+async function enrichPostsWithAuthoredCaptions(posts: ScrapedPost[], session: DownloadSession, runId: number): Promise<ScrapedPost[]> {
+  if (posts.length === 0)
+    return posts
+
+  addDebugLog('info', 'extractor', `Fetching authored captions for ${posts.length} post${posts.length === 1 ? '' : 's'}.`)
+
+  const enrichedPosts: ScrapedPost[] = []
+
+  for (const post of posts) {
+    if (!isCurrentRun(session.id, runId) || isStopRequested)
+      return posts
+
+    try {
+      const caption = await fetchInstagramPostCaption(post.id)
+      enrichedPosts.push({
+        ...post,
+        caption,
+      })
+      addDebugLog(
+        caption ? 'info' : 'warn',
+        'extractor',
+        caption ? `Caption fetched for ${post.id}.` : `No authored caption for ${post.id}.`,
+      )
+    }
+    catch (error) {
+      enrichedPosts.push({
+        ...post,
+        caption: '',
+      })
+      addDebugLog('warn', 'extractor', `Caption fetch failed for ${post.id}.`, error instanceof Error ? error.message : 'Unknown caption fetch error.')
+    }
+
+    await wait(300)
+  }
+
+  return enrichedPosts
 }
 
 async function waitForInitialProfileContent(session: DownloadSession, runId: number) {

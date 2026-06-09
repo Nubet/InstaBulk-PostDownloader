@@ -52,4 +52,37 @@ describe('buildDownloadBatch', () => {
       ],
     })
   })
+
+  it('skips caption files when authored caption is empty', () => {
+    const session: DownloadSession = {
+      id: 'session-1',
+      startedAt: '2026-06-08T10:00:00.000Z',
+      profile: {
+        name: 'nubet',
+        url: 'https://www.instagram.com/nubet/',
+        targetRoot: 'nubet',
+      },
+    }
+    const posts: ScrapedPost[] = [
+      {
+        id: 'post-1',
+        imageUrl: 'https://cdn.example.com/post-1.jpg',
+        caption: '',
+        profileName: 'nubet',
+      },
+    ]
+
+    expect(buildDownloadBatch(session, posts).items).toEqual([
+      {
+        id: 'post-1:image',
+        postId: 'post-1',
+        kind: 'image',
+        path: 'nubet/post-1/image.jpg',
+        source: {
+          type: 'remote-url',
+          value: 'https://cdn.example.com/post-1.jpg',
+        },
+      },
+    ])
+  })
 })

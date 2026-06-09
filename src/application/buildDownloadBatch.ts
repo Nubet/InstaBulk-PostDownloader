@@ -11,8 +11,7 @@ export function buildDownloadBatch(session: DownloadSession, posts: ScrapedPost[
 
 function createDownloadItems(session: DownloadSession, post: ScrapedPost): DownloadItem[] {
   const basePath = `${session.profile.targetRoot}/${post.id}`
-
-  return [
+  const items: DownloadItem[] = [
     {
       id: `${post.id}:image`,
       postId: post.id,
@@ -23,16 +22,23 @@ function createDownloadItems(session: DownloadSession, post: ScrapedPost): Downl
         value: post.imageUrl,
       },
     },
-    {
+  ]
+
+  const caption = post.caption.trim()
+
+  if (caption) {
+    items.push({
       id: `${post.id}:caption`,
       postId: post.id,
       kind: 'caption',
       path: `${basePath}/caption.txt`,
       source: {
         type: 'text',
-        value: post.caption,
+        value: caption,
         mimeType: 'text/plain;charset=utf-8',
       },
-    },
-  ]
+    })
+  }
+
+  return items
 }

@@ -34,13 +34,13 @@ describe('extractProfilePostsFromDocument', () => {
         {
           id: 'post-1',
           imageUrl: 'https://cdn.example.com/post-1.jpg',
-          caption: 'First caption',
+          caption: '',
           profileName: 'nubet',
         },
         {
           id: 'post-2',
           imageUrl: 'https://cdn.example.com/post-2.jpg',
-          caption: 'Second caption',
+          caption: '',
           profileName: 'nubet',
         },
       ],
@@ -122,7 +122,7 @@ describe('extractProfilePostsFromDocument', () => {
       {
         id: 'post-5',
         imageUrl: 'https://cdn.example.com/post-5.jpg',
-        caption: 'Nested path caption',
+        caption: '',
         profileName: 'nubet',
       },
     ])
