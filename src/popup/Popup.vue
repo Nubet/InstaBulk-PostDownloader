@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { sendMessage } from 'webext-bridge/popup'
+import PopupLogo from './PopupLogo.vue'
 import { selectScrapedPosts } from '~/features/profileDownload/application/selectScrapedPosts'
 import type { DownloadPostSelection } from '~/features/profileDownload/application/selectScrapedPosts'
 import { extensionMessage } from '~/features/profileDownload/contracts/messages'
@@ -391,8 +392,8 @@ onBeforeUnmount(() => {
   <main class="w-[400px] bg-[#fbfbfd] text-[#1d1d1f] font-sans antialiased overflow-hidden select-none">
     <header class="px-5 py-4 flex items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
       <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-[8px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] to-[#d62976] flex items-center justify-center shadow-[0_2px_5px_rgba(214,41,118,0.3)]">
-          <div class="i-lucide-instagram text-white text-[15px]" />
+        <div class="w-7 h-7 shrink-0">
+          <PopupLogo />
         </div>
         <h1 class="text-[17px] font-semibold tracking-tight text-[#1d1d1f]">
           InstaBulk
