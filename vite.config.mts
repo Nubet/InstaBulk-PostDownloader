@@ -6,7 +6,7 @@ import { defineConfig } from 'vite'
 import Vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import UnoCSS from 'unocss/vite'
-import { isDev, port, r } from './scripts/utils'
+import { browserOutDir, isDev, port, r } from './scripts/utils'
 import packageJson from './package.json'
 
 export const sharedConfig: UserConfig = {
@@ -68,7 +68,7 @@ export default defineConfig(({ command }) => ({
     watch: isDev
       ? {}
       : undefined,
-    outDir: r('extension/dist'),
+    outDir: r(`${browserOutDir}/dist`),
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
     terserOptions: {

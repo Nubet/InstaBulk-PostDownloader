@@ -1,6 +1,6 @@
 import { type PluginOption, defineConfig } from 'vite'
 import { sharedConfig } from './vite.config.mjs'
-import { isDev, r } from './scripts/utils'
+import { browserOutDir, isDev, r } from './scripts/utils'
 import packageJson from './package.json'
 
 function excludeUnoCssPlugins(plugins: PluginOption[] = []): PluginOption[] {
@@ -30,7 +30,7 @@ export default defineConfig({
     watch: isDev
       ? {}
       : undefined,
-    outDir: r('extension/dist/contentScripts'),
+    outDir: r(`${browserOutDir}/dist/contentScripts`),
     cssCodeSplit: false,
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
