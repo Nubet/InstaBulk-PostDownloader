@@ -14,7 +14,7 @@ export async function getManifest() {
     version: pkg.version,
     description: pkg.description,
     action: {
-      default_icon: 'assets/icon-512.png',
+      default_icon: 'assets/toolbar-icon-128.png',
       default_popup: 'dist/popup/index.html',
     },
     background: isFirefox
