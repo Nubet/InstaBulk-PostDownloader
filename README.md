@@ -1,6 +1,8 @@
+![InstaBulk banner](images/instabulk-banner.png)
+
 # InstaBulk Profile Downloader
 
-Browser extension for downloading public Instagram profile content.
+Browser extension for downloading Instagram profile content.
 
 ## Development
 
