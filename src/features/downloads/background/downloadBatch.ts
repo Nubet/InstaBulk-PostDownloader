@@ -1,5 +1,5 @@
+import type { DownloadBatch, ScrapeFailure } from '../domain/download'
 import { downloadItem } from './downloadItem'
-import type { DownloadBatch, ScrapeFailure } from '~/domain/download'
 
 export interface DownloadBatchResult {
   downloadedFileCount: number

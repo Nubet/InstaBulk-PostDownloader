@@ -1,4 +1,4 @@
-import type { ScrapedPost } from '~/domain/download'
+import type { ScrapedPost } from '../domain/profileDownload'
 
 const postPathSegments = new Set(['p', 'reel', 'tv'])
 const preferredPostAnchorSelector = [
@@ -135,9 +135,7 @@ function getPostIdFromHref(href: string | null): string | null {
     return null
 
   const url = href.startsWith('http') ? new URL(href) : new URL(href, 'https://www.instagram.com')
-  const pathname = url.pathname
-
-  const pathSegments = pathname.split('/').filter(Boolean)
+  const pathSegments = url.pathname.split('/').filter(Boolean)
   const postTypeIndex = pathSegments.findIndex(segment => postPathSegments.has(segment))
 
   if (postTypeIndex === -1)

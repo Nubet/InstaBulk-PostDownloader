@@ -1,7 +1,7 @@
-import { createDownloadSession } from './createDownloadSession'
-import { createSessionProgress } from './createSessionProgress'
-import { isActiveScrapePhase } from './isActiveScrapePhase'
-import type { DownloadSession, ScrapeProgress } from '~/domain/download'
+import { createDownloadSession } from '../domain/profileDownload'
+import { createSessionProgress, isActiveScrapePhase } from '../presentation/scrapeState'
+import type { DownloadSession } from '../domain/profileDownload'
+import type { ScrapeProgress } from '../presentation/scrapeState'
 
 export interface StartDownloadSessionResult {
   accepted: boolean

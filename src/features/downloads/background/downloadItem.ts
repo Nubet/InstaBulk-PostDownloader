@@ -1,5 +1,5 @@
+import type { DownloadItem } from '../domain/download'
 import { createDownloadUrl } from './createDownloadUrl'
-import type { DownloadItem } from '~/domain/download'
 
 export async function downloadItem(item: DownloadItem): Promise<void> {
   const downloadUrl = createDownloadUrl(item)

@@ -1,4 +1,5 @@
-import type { DownloadBatch, DownloadItem, DownloadSession, ScrapedPost } from '~/domain/download'
+import type { DownloadSession, ScrapedPost } from '../domain/profileDownload'
+import type { DownloadBatch, DownloadItem } from '~/features/downloads/domain/download'
 
 export function buildDownloadBatch(session: DownloadSession, posts: ScrapedPost[]): DownloadBatch {
   return {

@@ -1,7 +1,4 @@
-import { onMessage } from 'webext-bridge/background'
-import { downloadBatch } from './downloadBatch'
-import type { QueueDownloadBatchRequest } from '~/shared/messages'
-import { extensionMessage } from '~/shared/messages'
+import { registerDownloadHandlers } from '~/features/downloads/background/registerDownloadHandlers'
 
 if (import.meta.hot) {
   // @ts-expect-error Vite dev client path
@@ -9,14 +6,4 @@ if (import.meta.hot) {
   import('./contentScriptHMR')
 }
 
-onMessage(extensionMessage.queueDownloadBatch, async ({ data }) => {
-  const request = data as unknown as QueueDownloadBatchRequest
-  const result = await downloadBatch(request.batch)
-
-  return {
-    accepted: true,
-    queuedItemCount: request.batch.items.length,
-    downloadedFileCount: result.downloadedFileCount,
-    failure: result.failure,
-  }
-})
+registerDownloadHandlers()

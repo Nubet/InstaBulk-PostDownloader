@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { sendMessage } from 'webext-bridge/popup'
-import { createIdleProgress } from '~/application/createIdleProgress'
-import { isActiveScrapePhase } from '~/application/isActiveScrapePhase'
-import { validateInstagramProfileUrl } from '~/application/validateInstagramProfileUrl'
-import type { ScrapeDebugEntry, ScrapeProgress } from '~/domain/download'
-import { extensionMessage } from '~/shared/messages'
+import { validateInstagramProfileUrl } from '~/features/profileDownload/domain/profileDownload'
+import {
+  createIdleProgress,
+  isActiveScrapePhase,
+} from '~/features/profileDownload/presentation/scrapeState'
+import type { ScrapeDebugEntry, ScrapeProgress } from '~/features/profileDownload/presentation/scrapeState'
+import { extensionMessage } from '~/features/profileDownload/contracts/messages'
 
 const progress = ref(createIdleProgress('Checking active tab.'))
 const debugLog = ref<ScrapeDebugEntry[]>([])

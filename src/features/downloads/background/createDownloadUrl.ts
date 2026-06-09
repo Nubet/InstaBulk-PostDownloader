@@ -1,4 +1,4 @@
-import type { DownloadItem } from '~/domain/download'
+import type { DownloadItem } from '../domain/download'
 
 export interface CreatedDownloadUrl {
   value: string

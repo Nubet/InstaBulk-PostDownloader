@@ -1,4 +1,6 @@
-import type { DownloadBatch, DownloadSession, ScrapeDebugEntry, ScrapeFailure, ScrapeProgress } from '~/domain/download'
+import type { DownloadSession } from '../domain/profileDownload'
+import type { ScrapeDebugEntry, ScrapeProgress } from '../presentation/scrapeState'
+import type { DownloadBatch, ScrapeFailure } from '~/features/downloads/domain/download'
 
 export const extensionMessage = {
   getScrapeStatus: 'scrape/get-status',

@@ -1,29 +1,44 @@
-import type { GraphQLResponse, PostPageData } from '~/domain/instagram'
+interface GraphQLResponse {
+  data?: {
+    shortcode_media?: {
+      edge_media_to_caption?: {
+        edges?: {
+          node?: {
+            text?: string
+          }
+        }[]
+      }
+      caption?: string
+    }
+  }
+}
 
-const GRAPHQL_QUERY_HASH = '2b0673e0dc4580674a88d426fe00ea90'
+interface PostPageData {
+  caption?: string
+}
+
+const graphQlQueryHash = '2b0673e0dc4580674a88d426fe00ea90'
 
 export async function fetchInstagramPostCaption(shortcode: string): Promise<string> {
   try {
-    return await fetchCaptionViaGraphQL(shortcode)
+    return await fetchCaptionViaGraphQl(shortcode)
   }
   catch {
-    // GraphQL failed, fall through
   }
 
   try {
     return await fetchCaptionViaPostPage(shortcode)
   }
   catch {
-    // Post page fetch failed, fall through
   }
 
   return ''
 }
 
-async function fetchCaptionViaGraphQL(shortcode: string): Promise<string> {
+async function fetchCaptionViaGraphQl(shortcode: string): Promise<string> {
   const variables = JSON.stringify({ shortcode })
   const response = await fetch(
-    `https://www.instagram.com/graphql/query/?query_hash=${GRAPHQL_QUERY_HASH}&variables=${encodeURIComponent(variables)}`,
+    `https://www.instagram.com/graphql/query/?query_hash=${graphQlQueryHash}&variables=${encodeURIComponent(variables)}`,
     {
       credentials: 'include',
       headers: createInstagramHeaders(),
@@ -37,7 +52,7 @@ async function fetchCaptionViaGraphQL(shortcode: string): Promise<string> {
     throw new Error(`GraphQL query failed with status ${response.status}.`)
 
   const body = await response.json() as GraphQLResponse
-  const caption = extractCaptionFromGraphQL(body)
+  const caption = extractCaptionFromGraphQl(body)
 
   if (caption)
     return caption
@@ -45,7 +60,7 @@ async function fetchCaptionViaGraphQL(shortcode: string): Promise<string> {
   throw new Error('No caption found in GraphQL response.')
 }
 
-function extractCaptionFromGraphQL(body: GraphQLResponse): string {
+function extractCaptionFromGraphQl(body: GraphQLResponse): string {
   const edges = body?.data?.shortcode_media?.edge_media_to_caption?.edges
 
   if (edges?.length) {
@@ -76,16 +91,15 @@ async function fetchCaptionViaPostPage(shortcode: string): Promise<string> {
     throw new Error(`Post page fetch failed with status ${response.status}.`)
 
   const html = await response.text()
+  const jsonLdCaption = extractCaptionFromJsonLd(html)
 
-  const fromJsonLd = extractCaptionFromJsonLd(html)
+  if (jsonLdCaption)
+    return jsonLdCaption
 
-  if (fromJsonLd)
-    return fromJsonLd
+  const metaCaption = extractCaptionFromMetaTags(html)
 
-  const fromMeta = extractCaptionFromMetaTags(html)
-
-  if (fromMeta)
-    return fromMeta
+  if (metaCaption)
+    return metaCaption
 
   throw new Error('Could not extract caption from post page.')
 }
@@ -106,7 +120,6 @@ function extractCaptionFromJsonLd(html: string): string {
     }
   }
   catch {
-    // JSON parse failed
   }
 
   return ''
