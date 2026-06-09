@@ -36,7 +36,6 @@ pnpm start:firefox   # build + launch Firefox via web-ext
 ```bash
 pnpm package:all
 pnpm pack:zip   # Chrome Web Store (.zip from extension-chromium/)
-pnpm pack:crx   # Chrome CRX (requires key.pem or CHROME_EXTENSION_KEY)
 pnpm pack:xpi   # Firefox Add-ons (.xpi from extension-firefox/)
 ```
 
@@ -62,10 +61,12 @@ Produced artifacts:
 ```text
 instabulk-profile-downloader-<version>-chromium.zip
 instabulk-profile-downloader-<version>-firefox.xpi
-instabulk-profile-downloader-<version>-chromium.crx
 ```
 
-`CHROME_EXTENSION_KEY` should be configured as a GitHub Actions secret to publish the `.crx` file. The secret can be a PEM value or a base64-encoded PEM.
+Optional:
+
+- if `CHROME_EXTENSION_KEY` exists, the workflow also publishes `instabulk-profile-downloader-<version>-chromium.crx`
+- if the secret does not exist, CRX is skipped and the release still succeeds
 
 ## Checks
 

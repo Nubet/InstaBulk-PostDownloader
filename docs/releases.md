@@ -29,10 +29,11 @@ Artifacts:
 ```text
 instabulk-profile-downloader-<version>-chromium.zip
 instabulk-profile-downloader-<version>-firefox.xpi
-instabulk-profile-downloader-<version>-chromium.crx
 ```
 
 Notes:
 
-- `.crx` needs the `CHROME_EXTENSION_KEY` GitHub secret.
+- `.crx` is optional.
+- If `CHROME_EXTENSION_KEY` exists, the workflow also publishes `instabulk-profile-downloader-<version>-chromium.crx`.
+- If the secret does not exist, CRX is skipped and release still passes.
 - You can open the workflow run in the `Actions` tab if a release is missing.
