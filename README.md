@@ -36,9 +36,36 @@ pnpm start:firefox   # build + launch Firefox via web-ext
 ```bash
 pnpm package:all
 pnpm pack:zip   # Chrome Web Store (.zip from extension-chromium/)
-pnpm pack:crx   # Chrome CRX
+pnpm pack:crx   # Chrome CRX (requires key.pem or CHROME_EXTENSION_KEY)
 pnpm pack:xpi   # Firefox Add-ons (.xpi from extension-firefox/)
 ```
+
+## Release
+
+GitHub release publishing is tag-driven and uses semantic version tags in the `vX.Y.Z` format.
+
+```bash
+pnpm version patch|minor|major
+pnpm release:tag
+git push
+git push --tags
+```
+
+What happens next:
+
+1. The local `pre-push` hook validates that any pushed `v*` tag matches `package.json` version.
+2. GitHub Actions runs on tag push, verifies the tag again, then runs `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
+3. The workflow builds browser artifacts and publishes a GitHub Release with semantic filenames under `release/`.
+
+Produced artifacts:
+
+```text
+instabulk-profile-downloader-<version>-chromium.zip
+instabulk-profile-downloader-<version>-firefox.xpi
+instabulk-profile-downloader-<version>-chromium.crx
+```
+
+`CHROME_EXTENSION_KEY` should be configured as a GitHub Actions secret to publish the `.crx` file. The secret can be a PEM value or a base64-encoded PEM.
 
 ## Checks
 

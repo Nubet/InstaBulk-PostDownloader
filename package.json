@@ -27,14 +27,18 @@
     "build:background": "vite build --config vite.config.background.mts",
     "build:web": "vite build",
     "build:js": "vite build --config vite.config.content.mts",
-    "package:all": "cross-env NODE_ENV=production run-s package:chromium pack:xpi",
-    "package:chromium": "cross-env NODE_ENV=production EXTENSION=chromium run-s build:chromium pack:zip:run pack:crx:run",
+    "package:all": "cross-env NODE_ENV=production run-s pack:zip pack:xpi",
+    "package:chromium": "cross-env NODE_ENV=production EXTENSION=chromium run-s build:chromium pack:zip:run",
     "pack:zip": "cross-env NODE_ENV=production EXTENSION=chromium run-s build:chromium pack:zip:run",
     "pack:zip:run": "rimraf extension.zip && jszip-cli add extension-chromium/* -o ./extension.zip",
     "pack:crx": "cross-env NODE_ENV=production EXTENSION=chromium run-s build:chromium pack:crx:run",
     "pack:crx:run": "crx pack extension-chromium -o ./extension.crx",
     "pack:xpi": "cross-env NODE_ENV=production EXTENSION=firefox run-s build:firefox pack:xpi:run",
     "pack:xpi:run": "cross-env WEB_EXT_ARTIFACTS_DIR=./ web-ext build --source-dir ./extension-firefox --filename extension.xpi --overwrite-dest",
+    "release:verify": "esno scripts/release.ts verify",
+    "release:artifacts": "esno scripts/release.ts artifacts",
+    "release:tag": "esno scripts/release.ts tag",
+    "release:hook": "esno scripts/release.ts hook",
     "start:chromium": "cross-env NODE_ENV=production EXTENSION=chromium run-s clear:chromium build:web build:prepare build:background build:js start:chromium:run",
     "start:chromium:run": "web-ext run --source-dir ./extension-chromium --target=chromium",
     "start:firefox": "cross-env NODE_ENV=production EXTENSION=firefox run-s clear:firefox build:web build:prepare build:background build:js start:firefox:run",
@@ -83,7 +87,8 @@
     "webextension-polyfill": "^0.12.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged"
+    "pre-commit": "pnpm lint-staged",
+    "pre-push": "pnpm release:hook"
   },
   "lint-staged": {
     "**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx,vue}": "eslint --fix"
