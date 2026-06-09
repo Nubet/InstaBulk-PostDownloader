@@ -1,46 +1,46 @@
-![InstaBulk banner](images/instabulk-banner.png)
+![InstaBulk banner](images/banner.png)
 
 # InstaBulk Profile Downloader
 
 Browser extension for downloading Instagram profile content.
 
-## Development
+## Build
 
-Install dependencies:
+Each browser builds to its own directory.
+
+| Command | Builds for | Output |
+|---|---|---|
+| `pnpm build:chromium` | Chrome | `extension-chromium/` |
+| `pnpm build:firefox` | Firefox | `extension-firefox/` |
+| `pnpm build:all` | Both | both directories |
+
+## Development
 
 ```bash
 pnpm install
+pnpm dev          # Chrome (HMR on localhost:3303)
+pnpm dev-firefox  # Firefox (HMR on localhost:3303)
 ```
 
-Run Chromium development build:
+Load the respective directory (`extension-chromium/` or `extension-firefox/`) as an unpacked extension in the browser.
+
+## Run
 
 ```bash
-pnpm dev
+pnpm start:chromium  # build + launch Chrome via web-ext
+pnpm start:firefox   # build + launch Firefox via web-ext
 ```
 
-Load the `extension/` directory as an unpacked extension.
-
-Run Firefox development build:
+## Package for store
 
 ```bash
-pnpm dev-firefox
+pnpm package:all
+pnpm pack:zip   # Chrome Web Store (.zip from extension-chromium/)
+pnpm pack:crx   # Chrome CRX
+pnpm pack:xpi   # Firefox Add-ons (.xpi from extension-firefox/)
 ```
 
-Build Chromium production artifacts:
-
-```bash
-pnpm build
-```
-
-Build Firefox production artifacts:
-
-```bash
-pnpm build:firefox
-```
-
-For temporary Firefox installation, build with `pnpm build:firefox` first, then load the `extension/` directory.
-
-Run checks:
+## Checks
 
 ```bash
 pnpm typecheck
