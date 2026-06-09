@@ -67,13 +67,13 @@ function extractCaptionFromGraphQl(body: GraphQLResponse): string {
     const text = edges[0]?.node?.text
 
     if (text)
-      return text.trim()
+      return sanitizeCaption(text)
   }
 
   const caption = body?.data?.shortcode_media?.caption
 
   if (typeof caption === 'string')
-    return caption.trim()
+    return sanitizeCaption(caption)
 
   return ''
 }
@@ -105,30 +105,62 @@ async function fetchCaptionViaPostPage(shortcode: string): Promise<string> {
 }
 
 function extractCaptionFromJsonLd(html: string): string {
-  const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/)
+  const document = parseHtmlDocument(html)
+  const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
 
-  if (!match)
-    return ''
+  for (const script of scripts) {
+    try {
+      const data = JSON.parse(script.textContent ?? '') as PostPageData | PostPageData[]
+      const items = Array.isArray(data) ? data : [data]
 
-  try {
-    const data = JSON.parse(match[1]) as PostPageData | PostPageData[]
-    const items = Array.isArray(data) ? data : [data]
-
-    for (const item of items) {
-      if (typeof item.caption === 'string')
-        return item.caption.trim()
+      for (const item of items) {
+        if (typeof item.caption === 'string')
+          return sanitizeCaption(item.caption)
+      }
     }
-  }
-  catch {
+    catch {
+    }
   }
 
   return ''
 }
 
 function extractCaptionFromMetaTags(html: string): string {
-  const match = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i)
+  const document = parseHtmlDocument(html)
+  const content = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
 
-  return match?.[1]?.trim() ?? ''
+  return sanitizeCaption(content)
+}
+
+function normalizeCaption(value: string | null | undefined): string {
+  if (!value)
+    return ''
+
+  return decodeHtmlEntities(value).trim()
+}
+
+function sanitizeCaption(value: string | null | undefined): string {
+  const caption = normalizeCaption(value)
+
+  if (!caption)
+    return ''
+
+  const quotedCaptionMatch = caption.match(/^\d[\d,.\s]*likes?,\s+\d[\d,.\s]*comments?\s+-\s+(?:\S.*?|[\t\v\f \xA0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF]):\s*"([\s\S]+)"\.?$/i)
+
+  if (quotedCaptionMatch)
+    return quotedCaptionMatch[1].trim()
+
+  return caption
+}
+
+function decodeHtmlEntities(value: string): string {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+  return textarea.value
+}
+
+function parseHtmlDocument(html: string): Document {
+  return new DOMParser().parseFromString(html, 'text/html')
 }
 
 function createInstagramHeaders(): Record<string, string> {
